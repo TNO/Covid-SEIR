@@ -1,0 +1,8 @@
+numpy
+scipy
+matplotlib
+tqdm
+seaborn
+emcee
+corner
+h5py

@@ -1,0 +1,50 @@
+{
+   "worldfile": true,
+   "country": "Korea, South",
+  "t_max" : 90,
+   "maxrecords": 60,
+  "dt" : 1,
+  "time_delay": 0,
+  "population": 50e6,
+  "nr_prior_samples": 400,
+  "nr_forecast_samples": 1500,
+  "esmda_iterations": 16,
+  "N" : {
+        "type": "uniform",
+    "min":  3000000,
+    "max":  7000000
+    },
+  "sigma" : 0.2,
+  "gamma" : 0.5,
+  "R0" : {
+    "type": "uniform",
+    "min": 3.3,
+    "max": 3.7
+  },
+  "m": 0.5,
+  "alpha" : [[0.5,0.6], [0.0,0.05], [0.8,0.9]],
+  "dayalpha" : [2, 9, 33],
+  "delayHOS" : 5,
+  "delayHOSREC" : 14,
+  "delayHOSD" : 3,
+  "delayREC" : 12,
+  "delayICUCAND": 0,
+  "delayICUD": 3,
+  "delayICUREC": 23,
+  "hosfrac" : 0.05,
+  "dfrac" : 0.22,
+  "icudfrac" : 0.5,
+  "calibration_mode": "dead",
+  "observation_error": 5,
+  "YMAX": 20e3,
+  "XMAX": 60,
+  "ICufrac": 0.33,
+  "hist_time_steps": [25,27,30,35,40,60],
+  "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
+  "plot" : {
+    "legendloc" : "best",
+    "legendfont" : "x-small",
+    "y_axis_log": true,
+       "hindcast_plume": false
+  }
+}
