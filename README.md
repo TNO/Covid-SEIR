@@ -106,7 +106,8 @@ China.json :
 4 . own input files:
 
     In the Netherlands input file, cusroim data is loaded including information on hospitalization, The files should be a txt file as corona_dataNL26.txt with  6 columns
-``` #  column 0 -  day
+``` 
+    #  column 0 -  day
     #  column 1 - cumulative registered infected (postive test cases)
     #  column 2  - cum  dead
     #  column 3 - cum recovered
@@ -124,5 +125,5 @@ corona_esmda generates prior and posterior ensembles of dead, hospitalized, etc
 The csv file can be used for further post_processing, containing confidence intervals, which can be plotted elseweher
 
 6 . errors
-If a config keyword is misspelled or mssing this easily results in an error, please provide all keywors
-if output writing gives an error make sure your you working directory is at bin
+If a config keyword is misspelled or missing this easily results in an error, please provide all keywords.
+if output writing gives an error make sure your you working directory is located at bin
