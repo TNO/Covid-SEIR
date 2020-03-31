@@ -71,7 +71,7 @@ China.json :
   "hosfrac" : 0.17,       # relative fraction of infected people hospitalized, default 0.05 but higher for china to
                           # to compare infected with observed
 ```
-  *times for removed to recover, and die, for hospital see flow diagram*
+  *times for removed to recover, and die, we used in the WHO paper very simple settings for the hospital see flow diagram, resulting in an average stay of ICU patients of 14 days, the ICUdfrac has been set artificilly to 0.0 to obtain results which are very similar to the WHO paper results.  Evidently the flow diagram allows realistic settings in accordance with country specific or time dependent measures*
   
   ![flow](hospitalFlowParameters.JPG)
 ```json
@@ -81,7 +81,7 @@ China.json :
   "delayREC" : 12,         # average time for recovery of non hopsitalized patients
   "delayICUCAND": 0,     # average time for hopsitalized patients to move to ICU
   "delayICUD": 3,        # average time for ICU patients to die
-  "delayICUREC": 23,       # average time for ICU patients to recover
+  "delayICUREC": 14,       # average time for ICU patients to recover
   "dfrac" : 0.22,         # hospitalization case fatality rate
   "icudfrac" : 0.5,         # fraction of ICU patients dying
   "calibration_mode": "dead",  # calibration on "dead"
