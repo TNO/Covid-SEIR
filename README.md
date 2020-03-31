@@ -71,7 +71,7 @@ China.json :
   "hosfrac" : 0.17,       # relative fraction of infected people hospitalized, default 0.05 but higher for china to
                           # to compare infected with observed
 ```
-  *times for removed to recover, and die, we used in the WHO paper very simple settings for the hospital see flow diagram, resulting in an average stay of ICU patients of 14 days, the ICUdfrac has been set artificilly to 0.0 to obtain results which are very similar to the WHO paper results.  Evidently the flow diagram allows realistic settings in accordance with country specific or time dependent measures*
+  *For the times to move from Removed in the SEIR model to recover or  die, we used in the WHO paper very simple settings for the hospital flow, resulting in an average stay of ICU patients of 14 days. In the mean time we improved the flow parameters as depicted  below. In order to be in agreement with the WHO papaer, belwo we show settings in accordance with the average stay. The ICUdfrac has been set artificilly to 0.0 to obtain results which are very similar to the WHO paper results.  Evidently the flow diagram allows realistic settings in accordance with country specific or time dependent measures*
   
   ![flow](hospitalFlowParameters.JPG)
 ```json
@@ -102,7 +102,7 @@ China.json :
 ```
 4 . own input files:
 
-    Load the observed data, should be txt file as corona_dataNL26.txt with  6 columns
+    In the Netherlands input file, cusroim data is loaded including information on hospitalization, The files should be a txt file as corona_dataNL26.txt with  6 columns
 ``` #  column 0 -  day
     #  column 1 - cumulative registered infected (postive test cases)
     #  column 2  - cum  dead
