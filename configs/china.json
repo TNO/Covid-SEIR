@@ -1,6 +1,7 @@
 {
   "worldfile": true,
   "country": "China",
+  "province": "all",
    "maxrecords": 60,
   "t_max" : 90,
   "dt" : 0.1,
@@ -44,7 +45,9 @@
     "legendloc" : "best",
     "legendfont" : "x-small",
     "y_axis_log": true,
-    "hindcast_plume": false
+    "hindcast_plume": false,
+     "xmaxalpha": 31,
+     "casename": "China"
   },
   "hist_time_steps": [30,35,40,50,60]
 

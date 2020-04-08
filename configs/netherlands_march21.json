@@ -38,8 +38,9 @@
   "icudfrac" : 0.0,
   "calibration_mode": "hospitalizedcum",
   "observation_error": 10,
-  "YMAX": 200e3,
-  "XMAX": 60,
+
+   "YMAX": 10e3,
+   "XMAX": 60,
   "ICufrac": 0.55,
   "hist_time_steps": [30,35,40,60],
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
@@ -47,7 +48,9 @@
     "legendloc" : "best",
     "legendfont" : "x-small",
     "y_axis_log": true,
-    "hindcast_plume": true
+    "hindcast_plume": true,
+    "xmaxalpha": 31,
+     "casename": "Netherlands"
   }
 
 }

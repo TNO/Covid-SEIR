@@ -19,9 +19,10 @@ def base_seir_model(param, dict):
     # Helper class to interpolate alpha to all times
     class AlphaFunc(object):
         def __init__(self, alpha, time, dayalpha):
+            ifeltdelay = 1
             alpha_f = np.zeros_like(time)
             for j, dayr in enumerate(dayalpha):
-                alpha_f[t.tolist().index(dayr):] = alpha[j]
+                alpha_f[t.tolist().index(dayr+ifeltdelay):] = alpha[j]
 
             self.alpha = alpha_f
             self.time = time
@@ -68,26 +69,48 @@ def base_seir_model(param, dict):
     hoscum[:int(delay_hos)] = 0
 
 
+    #icufrac is the fraction of patients going to ICU at the time of entry in hospital
+    icufrac2 = icufrac
+    # dp frac is the fraction of all  patients dying who did not go to ICU, referenced at entry in the hospital
+    dpfrac = (dfrac - icufrac * icudfrac)/(1.0001-icufrac)  #/ (1 - icufrac * icudfrac)
+    hosday2 = np.concatenate((np.array([0]), np.diff(hoscum)))
+    hosday = hosday2*1.0
+    if (delay_icu>0.01):
+        for i, num in enumerate(hosday):
+            irange = int(delay_icu*2)
+            ilow =int (max(0,(i-irange)))
+            ihigh = int(min(np.size(hosday),i+1 ))
+            hosday[i] = np.mean( hosday2[ilow:ihigh])
+   # check for consistency
+    hoscum2 = np.cumsum(hosday)
+    # construct hospitalization and icu as if nobody dies in the hospital, except icu
+    icuday = hosday*icufrac
+    icucum = np.cumsum(icuday)
+   # icucum = np.roll(icucum, int(delay_icu))
+   # icucum[:int(delay_icu)] = 0
 
-    dpfrac = (dfrac - icufrac * icudfrac) / (1 - icufrac * icudfrac)
-    icucum = np.roll(hoscum, int(delay_icu))*icufrac
-    icucum[:int(delay_icu)] = 0
-    icu_dead = np.roll(icucum, int(delay_icud)) * icudfrac
-    icu_dead[: int(delay_icud)] = 0
-    icu_rechos = np.roll(icucum, int(delay_icurec)) * (1. - icudfrac) # Back to hospital
+    #recovered from icu, taking into account deaths from icu
+    icu_rechos = np.roll(icucum, int(delay_icurec))  * (1. - icudfrac) # Back to hospital
     icu_rechos[:int(delay_icurec)] = 0
     icu_recfull = np.roll(icu_rechos, int(delay_hosrec)) # All who go back to hospital recover, but this takes time
     # this is the full recovered patients who went through ICU
     icu_recfull[:int(delay_hosrec)] = 0
 
+    # dead from icu
+    icu_dead = np.roll(icucum, int(delay_icud)) * icudfrac
+    icu_dead[: int(delay_icud)] = 0
+
     # this is the full rovered patients who did not went through ICU
-    rechos = np.roll(hoscum, int(delay_hosrec)) * (1. - dpfrac) * (1-icufrac)
+    rechos = np.roll(hoscum *(1-icufrac)*(1. - dpfrac), int(delay_hosrec))
     rechos[:int(delay_hosrec)] = 0
-    recmild = np.roll(r, int(delay_rec)) * (1. - hosfrac)
-    recmild[:int(delay_rec)] = 0
-    hdead = np.roll(hoscum, int(delay_hosd)) * dpfrac
+    # dead from hospitalized but not including icu
+    hdead = np.roll(hoscum*(1-icufrac)* dpfrac, int(delay_hosd))
     hdead[:int(delay_hosd)] = 0
 
+    recmild = np.roll(r, int(delay_rec)) * (1. - hosfrac)
+    recmild[:int(delay_rec)] = 0
+
+    # actual icu is cumulative icu minus icu dead and icu revovered
     icu = icucum - icu_dead - icu_rechos
     dead = hdead + icu_dead
     hos = hoscum - rechos - icu_recfull - dead # includes ICU count

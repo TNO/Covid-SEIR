@@ -71,12 +71,16 @@ def calibrate_with_data(prior, t, data,data_index, output_index):
     t_ind = [np.where(t == a)[0][0] for a in data[:, I_TIME]]
     forecasted_cases = prior[:, output_index, t_ind]
     observed_cases = data[:, data_index]
-    total_cases_forecasted = forecasted_cases[:, -1]-  forecasted_cases[:,0];
+    total_cases_forecasted = forecasted_cases[:, -1] - forecasted_cases[:,0];
     forecasted_rate = np.diff(forecasted_cases, axis=-1)
     forecasted_rate = np.clip(forecasted_rate, a_min=1e-05, a_max=None)
     observed_rate = np.diff(observed_cases)
+
     ll = np.sum(observed_rate[None, :] * np.log(forecasted_rate), axis=-1) - total_cases_forecasted
-    p = np.exp(ll - ll.max()) / np.sum(np.exp(ll - ll.max()))
+    ll = ll.astype(float)
+    llmax = ll.max()
+
+    p = np.exp(ll - llmax) / np.sum(np.exp(ll - llmax))
 
     return p
 

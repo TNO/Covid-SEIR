@@ -47,12 +47,6 @@ def plot_prior_and_posterior(results, fwd_args, config, configpath, t_obs, data,
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
 
-    # Alway plot hospitalized and ICU
-    # calmodes = [S_HOS, S_ICU, S_DEAD]
-    # o_indices = [O_HOS, O_ICU, S_DEAD]
-    # if calibration_mode==S_HOSCUM :
-    #    calmodes = [S_HOSCUM, S_ICU, S_DEAD]
-    #   o_indices = [O_HOSCUM, O_ICU, S_DEAD]
 
 
     calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD]
@@ -153,12 +147,49 @@ def plot_prior_and_posterior(results, fwd_args, config, configpath, t_obs, data,
                    table, header=header, delimiter=',', comments='', fmt='%.2f')
 
 
+        # save calibrated alfa values over time
+        mnames = results['mnames']
+        mvalues = results['mvalues']
+
+        dayalpha1 = config['dayalpha']
+        dayalpha = np.array(dayalpha1)
+        alpha = np.zeros(np.size(dayalpha))
+        alpha_sd = np.zeros(np.size(dayalpha))
+        icount = 0
+        for i, val in enumerate(mnames):
+            if val == 'a':
+                alpha[icount] = mvalues[i][2]
+                alpha_sd[icount] = mvalues[i][3]
+                icount += 1
+
+
+        alpha_t = np.zeros_like(steps)
+        alpha_sd_t = np.zeros_like(steps)
+        for j, dayr in enumerate(dayalpha):
+            alpha_t[steps.tolist().index(dayr):] = alpha[j]
+            alpha_sd_t[steps.tolist().index(dayr):] = alpha_sd[j]
+
+        p_values = [0.05,  0.5,   0.95]
+        h_pvalues = ['P' + str(int(100 * a)) for a in p_values]
+        header = 'time,' + ','.join(h_pvalues)
+        p_array = np.asarray(p_array)
+        observed = np.pad(y_obs, (0, len(steps) - len(y_obs)), mode='constant', constant_values=np.nan)[:, None]
+        p5 = alpha_t + alpha_sd_t * 1.96
+        p95 = alpha_t - alpha_sd_t * 1.96
+        table = np.concatenate((steps[:,None],  p5[:,None], alpha_t[:, None],  p95[:,None]), axis=1)
+        np.savetxt('{}_posterior_prob_{}_calibrated_on_{}.csv'.format(outpath, 'alpha', config['calibration_mode']),
+                   table, header=header, delimiter=',', comments='', fmt='%.2f')
+
+
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
     data = load_data(config)
     # concatenate additional column for actual observed hospitalized based
     t_obs = data[:, I_TIME]
+
+    data = generate_hos_actual(data, config)
+
 
     calibration_mode = config['calibration_mode']
     if calibration_mode == S_DEAD:
@@ -175,6 +206,8 @@ def main(configpath):
         output_index = O_HOSCUM
     else:
         raise NotImplementedError
+
+
 
     # Load inversion method and define forward model
     try:

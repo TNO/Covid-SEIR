@@ -21,13 +21,18 @@ To run a calibration and forecast:
 1. Create a .json configuration file. Several example files are provided in this repository in the configs directory
     china.json
     korea.json
+    lombardy_mc.json
+    netherlands_actual.json
     netherlands_march14.json
     netherlands_march21.json
     netherlands_march26.json
 
-2. run  corona_mc.py (for the loglikelyhood mode)  or corona_esmda.py (for the ensemble soother model)
-from the bin directory as working directory, so the settings (e.g. in pycharm should be)
-```json
+2. run  corona_mc.py (for the loglikelyhood mode)  or corona_esmda.py (for the ensemble smoother model)
+from the bin directory as working directory, so the settings (e.g. in pycharm should be as displayed in the figure below).
+After running esmda you can run confidencecurves.py to generate colored plots displaying expected mean, and confidence intervals for ICU,
+hospitalized cum, hospitalized and mortalities. For all a zoom close to the actual end of the observation data and a
+plot over the selected axis range (controlled by XMAX and YMAX)
+```
 For corona_mc.py
   script path: {your git corona dir}/bin/corona_mc.py
   parameters: {your git corona dir}../configs/netherlands_march26.json
@@ -36,16 +41,21 @@ For corona_esmda.py
   script path: {your git corona dir}/bin/corona_mc.py
   parameters: {your git corona dir}../configs/netherlands_march26.json
   working directory {your git corona dir}/bin
+For confidencecurves.py
+  script path: {your git corona dir}/bin/confidencecurves.py
+  parameters: {your git corona dir}../configs/netherlands_march26.json
+  working directory {your git corona dir}/bin
 ```
  ![flow](PycharmSetting.JPG)
 
 3. formats of input and meaning of parameters
 
 China.json :
-```json
+```
 {
   "worldfile": true,   #  USE John Hopkins  repository for data
-  "country": "China",  # name of country in repository or datafile
+  "country": "China",  # name of country in repository or datafile,
+  "province": "all",  # name of "province": use all
    "maxrecords": 60,  # maximum number of days for the data to take into account from the first record onward
   "t_max" : 90,       # maximum range of the model including the time_delay
   "dt" : 0.1,         # dt for ODE solver (days), default=0.1 days
@@ -77,7 +87,7 @@ China.json :
   *For the times to move from Removed in the SEIR model to recover or  die, we used in the WHO paper very simple settings for the hospital flow, resulting in an average stay of ICU patients of 14 days. In the mean time we improved the flow parameters as depicted  below. In order to be in agreement with the WHO paper, below we show settings in accordance with the average stay. The ICUdfrac has been set artificilly to 0.0 to obtain results which are very similar to the WHO paper results.  Evidently the flow diagram allows realistic settings in accordance with country specific or time dependent measures*
   
   ![flow](hospitalFlowParameters.JPG)
-```json
+```
   "delayHOS" : 5,          # delay between recovered and hospitalization (days)
   "delayHOSREC" : 14,      # average time for recovery of hopsitalized patients not in need for ICU
   "delayHOSD" : 3,        # average time for death of hopsitalized patients not in need for ICU
@@ -90,7 +100,7 @@ China.json :
   "calibration_mode": "dead",  # calibration on "dead"
   "observation_error": 200,    # standard error for esmda in corona_esmda.py
   "YMAX": 1e6,              # y axis plotting range (population, scaled for ICU and hospitalization plots)
-  "XMAX": 60,               # x axis polt range (days)
+  "XMAX": 60,               # x axis plottting range (days)
   "ICufrac": 0.0,           # fraction of hospitalized patients in need for ICU
    "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],  # P ranges for confidence data (for csv files)
   "plot" : {                       # plot settings
@@ -98,6 +108,8 @@ China.json :
     "legendfont" : "x-small",
     "y_axis_log": true,
     "hindcast_plume": false        # show all prior monte carlo samples in the hindcast plot of corona_mc.py
+    "xmaxalpha": 31,               # for confidencecurves.py  output
+     "casename": "China"     # for confidencecurves.py  output in esdma 
   },
   "hist_time_steps": [30,35,40,50,60] # histogram days
 
@@ -107,12 +119,13 @@ China.json :
 
     In the Netherlands input file, cusroim data is loaded including information on hospitalization, The files should be a txt file as corona_dataNL26.txt with  6 columns
 ``` 
-    #  column 0 -  day
+    #  column 0 -  day (number starting from 1)
     #  column 1 - cumulative registered infected (postive test cases)
     #  column 2  - cum  dead
     #  column 3 - cum recovered
     #  column 4 - cumulative hospitalized
     #  column 5 - actual IC units used (may be estimated or 0)
+    #  column 6 - actual hospilatized (put all to 0 to overwrite from estimates calculated from the hospital flow model)
 ```
 5 . output files
 
@@ -122,7 +135,8 @@ Output file names start with the json name and corona_mc.py
 generates hindcast and forecast  (shown in paper appendix, and fig. 3) as well as ensemble plots.data
 corona_esmda generates prior and posterior ensembles of dead, hospitalized, etc
 
-The csv file can be used for further post_processing, containing confidence intervals, which can be plotted elseweher
+The csv file can be used for further post_processing, containing confidence intervals, which can be plotted with running
+confidencecurves.py
 
 6 . errors
 If a config keyword is misspelled or missing this easily results in an error, please provide all keywords.

@@ -2,8 +2,8 @@ import json
 import os
 import h5py
 import numpy as np
-
-import res.world_data as world_data
+import res.global_data as global_data
+# import res.world_data as world_data
 
 
 def load_config(configpath):
@@ -40,17 +40,53 @@ def load_data(config):
     direc = '.'
     useworldfile = config['worldfile']
     country = config["country"]
+    province = ''
+    if 'province' in config:
+        province = config['province']
     data_offset = 0
     if useworldfile:
-        wdata, firstdate = world_data.get_country_xcdr(country, 'all', dateOffset=data_offset)
+        # wdata, firstdate = world_data.get_country_xcdr(country, 'all', dateOffset=data_offset)
+        # print(firstdate)
+        # data = np.array(wdata)
+        data, firstdate = global_data.get_country_data(country, province)
         print(firstdate)
-        data = np.array(wdata)
     else:
         data = np.loadtxt(os.path.join(direc, country))
     if 'maxrecords' in config:
         n = config['maxrecords']
         data = data[:n]
     return data
+
+
+def  read_icufrac_data(config, time, time_delay):
+    icufracfile = 'None'
+    icufrac= 'None'
+    if 'icufracfile' in config:
+        icufracfile = config['icufracfile']
+        direc = '.'
+        # read icufracs from a datafile, these are
+        data =np.genfromtxt(os.path.join(direc, icufracfile), names=True)
+        #data = np.loadtxt(os.path.join(direc, icufracfile), names=True, delimiter=' ')
+        icudata = data['icufrac']
+        if 'maxrecords' in config:
+            n = config['maxrecords']
+            icudata = icudata[:n]
+        # map the data to array equal to length of time
+        icufrac = np.ones_like(time)
+        for i, num in enumerate(icufrac):
+            if (i<np.size(icudata)):
+                icufrac[i] = icudata[i]
+            else:
+                icufrac[i] = icufrac[i-1]
+         # delay the icufrac
+        icufrac = np.roll(icufrac, int(time_delay))
+        # set the first times the icufrac to the first value
+        icufrac[:int(time_delay)] = icudata[0]
+    else:
+        icufrac = config['ICufrac']
+
+    return icufrac
+
 
 
 def save_results(results, fwd_args, config, outpath, data, mode):

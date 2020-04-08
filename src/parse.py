@@ -2,6 +2,9 @@ import numpy as np
 from scipy.stats import uniform, norm
 from scipy.stats._distn_infrastructure import rv_frozen
 
+from src.io_func import read_icufrac_data
+
+
 def parse_config(config, mode='prior'):
     """
     Turns configuration file into parsed model parameters
@@ -29,10 +32,13 @@ def parse_config(config, mode='prior'):
     delay_icurec = to_distr(config['delayICUREC'], nr_samples)
     hosfrac = to_distr(config['hosfrac'], nr_samples)
     dfrac = to_distr(config['dfrac'], nr_samples)
-    icufrac = to_distr(config['ICufrac'], nr_samples)
+
+
+
     icudfrac = to_distr(config['icudfrac'], nr_samples)
     m = to_distr(config['m'], nr_samples)
     time = np.linspace(0, t_max, int(t_max) + 1)
+    icufrac = read_icufrac_data(config, time, time_delay)
     # indep_scaling = [to_distr(config['alphascaling'], nr_samples) for _ in alpha]
     # Make scaling fully correlated
     # alpha_n = [a * indep_scaling[0] for i, a in enumerate(alpha)]
@@ -44,11 +50,20 @@ def parse_config(config, mode='prior'):
     alpha_dict = [{'type': 'uniform', 'min': a[0], 'max': a[1]} for a in alpha]
     alpha_n = [to_distr(a, nr_samples) for a in alpha_dict]
 
-    params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
-              delay_icurec, hosfrac,icufrac,dfrac,icudfrac, m, population]
-    names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
-             'delay_icu','delay_icud','delay_icurec','hosfrac','icufrac', 'dfrac','icudfrac', 'm', 'population']
     return_dict = {'free_param': [], 'm_prior': [], 'locked': {}}
+    if np.size(icufrac) == np.size(time):
+        return_dict['locked']['icufrac'] = icufrac
+        params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
+                  delay_icurec, hosfrac, dfrac, icudfrac, m, population]
+        names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
+                 'delay_icu', 'delay_icud', 'delay_icurec', 'hosfrac', 'dfrac', 'icudfrac', 'm',
+                 'population']
+    else:
+        params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
+                  delay_icurec, hosfrac,icufrac,dfrac,icudfrac, m, population]
+        names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
+                 'delay_icu','delay_icud','delay_icurec','hosfrac','icufrac', 'dfrac','icudfrac', 'm', 'population']
+
     return_dict['locked']['dayalpha'] = dayalpha
 
     for i, param in enumerate(params):
@@ -144,6 +159,28 @@ def add_to_dict(dict, array, name):
                 dict['free_param'].append(name)
     return dict
 
+
+
+def get_mean(var):
+    """
+    Sample from distributions
+    :param var: either a dict describing a distribution, or a scalar value
+    :return: mean value
+    """
+    if type(var) == dict:
+        if var['type'] == 'uniform':
+            rv = 0.5 * (var['max'] + var['min'])
+        elif var['type'] == 'normal':
+            rv = loc=var['mean']
+        else:
+            raise NotImplementedError('Distribution not implemented')
+    else:
+        rv = var
+
+
+    ret = rv
+
+    return ret
 
 def to_distr(var, nr_samples):
     """

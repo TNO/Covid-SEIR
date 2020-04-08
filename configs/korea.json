@@ -22,8 +22,8 @@
     "max": 3.7
   },
   "m": 0.5,
-  "alpha" : [[0.5,0.6], [0.0,0.05], [0.8,0.9]],
-  "dayalpha" : [2, 9, 33],
+  "alpha" : [[0.55,0.65], [0.0,0.01], [0.8,0.9]],
+  "dayalpha" : [2, 8, 33],
   "delayHOS" : 5,
   "delayHOSREC" : 14,
   "delayHOSD" : 3,
@@ -45,6 +45,8 @@
     "legendloc" : "best",
     "legendfont" : "x-small",
     "y_axis_log": true,
-       "hindcast_plume": false
+       "hindcast_plume": false,
+        "xmaxalpha": 31,
+     "casename": "Netherlands"
   }
 }

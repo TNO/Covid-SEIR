@@ -170,15 +170,27 @@ class InversionMethods:
 
                 print(header)
 
+                # create m array to store results of model parameters
+                mvalues =np.zeros((nM,4))
+                mnames = np.ones(nM,dtype=np.str)
+                #for i_m in range(nM):
+                #    if (i_m!=0):
+                #       mnames.append('')
                 for i_m in range(nM):
                     # line = ' %2i  ' % i_m
                     line = args_forward[0]['free_param'][i_m]
-                    # for iI in range(len(M)):
+                    mnames[i_m]=line
+
                     for iI in [0, len(M) - 1]:
                         mm = mmean[iI][i_m]
                         ms = mstd[iI][i_m]
-
-                        line = line + '||  %7f    %7f  ' % (mm, ms)
+                        if iI ==0:
+                            mvalues[i_m][0] =mm
+                            mvalues[i_m][1] = ms
+                        else:
+                            mvalues[i_m][2] =mm
+                            mvalues[i_m][3] = ms
+                        line = line + ',%d, %7f,%7f  ' % (iI,mm, ms)
 
                     print(line)
 
@@ -209,7 +221,7 @@ class InversionMethods:
         # --------------------------------------------------------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
 
-        return {'M': M, 'GM': GM, 'fw': fw}
+        return {'M': M, 'GM': GM, 'fw': fw, 'mnames':mnames, 'mvalues': mvalues}
 
 
 def model(m):
