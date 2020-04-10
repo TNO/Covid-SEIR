@@ -21,6 +21,15 @@ def load_config(configpath):
         pass
     return config
 
+def save_input_data(configpath,  datanew):
+    base = (os.path.split(configpath)[-1]).split('.')[0]
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+    header = 'day,test,dead,rec,hoscum,icu,hosact'
+    table =  datanew[:,0:7] #np.concatenate((datanew[:, 0:6]), axis=-1)
+    np.savetxt('{}_inputdata{}.txt'.format(outpath, '', ''),
+               table, header=header, delimiter=',',comments='',fmt='%8d')
+
+
 
 def load_data(config):
     """
@@ -41,21 +50,25 @@ def load_data(config):
     useworldfile = config['worldfile']
     country = config["country"]
     province = ''
+    startdate = ''
+    firstdate = ''
     if 'province' in config:
         province = config['province']
     data_offset = 0
+    if 'startdate' in config:
+        startdate = config['startdate']
     if useworldfile:
         # wdata, firstdate = world_data.get_country_xcdr(country, 'all', dateOffset=data_offset)
         # print(firstdate)
         # data = np.array(wdata)
-        data, firstdate = global_data.get_country_data(country, province)
+        data, firstdate = global_data.get_country_data(country, province, startdate)
         print(firstdate)
     else:
         data = np.loadtxt(os.path.join(direc, country))
     if 'maxrecords' in config:
         n = config['maxrecords']
         data = data[:n]
-    return data
+    return data,firstdate
 
 
 def  read_icufrac_data(config, time, time_delay):

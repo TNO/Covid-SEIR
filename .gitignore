@@ -2,5 +2,7 @@
 *.pyc
 *.png
 venv/
-output/*
-!output/.gitkeep
+output/
+res/time_series_covid19_confirmed_global.csv
+res/time_series_covid19_deaths_global.csv
+res/time_series_covid19_recovered_global.csv

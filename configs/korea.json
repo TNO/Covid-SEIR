@@ -1,6 +1,7 @@
 {
    "worldfile": true,
    "country": "Korea, South",
+    "startdate": "1/22/20",
   "t_max" : 90,
    "maxrecords": 60,
   "dt" : 1,

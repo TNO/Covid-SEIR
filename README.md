@@ -10,10 +10,14 @@ Jan-Diederik van Wees, Sander Osinga, Martijn van der Kuip, Michael Tanck, Mauri
 Maarten Pluymaekers, Olwijn Leeuwenburgh, Lonneke van Bijsterveldt, Jaap Zindler, Marceline Tutu van Furth
 
 
-https://www.who.int/bulletin/online_first/covid-19/en/
+https://www.who.int/bulletin/online_first/COVID-19/en/
+
 http://dx.doi.org/10.2471/BLT.20.256743
 
 The program has been tested under python 3.7
+
+the figures from the dutch model april 9 are also explained in the pdf in the root directory of github
+
 
 
 To run a calibration and forecast:
@@ -22,7 +26,8 @@ To run a calibration and forecast:
     china.json
     korea.json
     lombardy_mc.json
-    netherlands_actual.json
+    netherlands_april9.json
+    netherlands_april9_narrow.json
     netherlands_march14.json
     netherlands_march21.json
     netherlands_march26.json
@@ -54,8 +59,9 @@ China.json :
 ```
 {
   "worldfile": true,   #  USE John Hopkins  repository for data
-  "country": "China",  # name of country in repository or datafile,
-  "province": "all",  # name of "province": use all
+  "country": "China",  # name of country in repository or local datafile name e.g. "../res/corona_dataNL_april9.txt",
+  "province": "all",  # name of "province": use all, or select no province for others, depending on what is expected
+   date, "1/22/2020"  # starting data of data to be used from john hopkins repository, this day corresponds to day 1 da,
    "maxrecords": 60,  # maximum number of days for the data to take into account from the first record onward
   "t_max" : 90,       # maximum range of the model including the time_delay
   "dt" : 0.1,         # dt for ODE solver (days), default=0.1 days
@@ -115,9 +121,42 @@ China.json :
 
 }
 ```
-4 . own input files:
 
-    In the Netherlands input file, cusroim data is loaded including information on hospitalization, The files should be a txt file as corona_dataNL26.txt with  6 columns
+In the flow of hospitalized for each delay parameter you can add a distribution. In the monte carlo samples 
+these will be varied indvidually based on the sampled delay time. THis should be interpreted 
+as the sample expected delay time.  On top of this mean delay time varied for each sample you can add a gaussian distribution 
+with defining a standard deviation smooth_sd (in days). The netherlands cases netherlands_april9_narrow and netherlands_april9
+shoWs this. The figure below also shows how the gaussian smoothing works
+
+ ![flow](gaussiansmoothing.JPG)
+
+4 .  Netherlands cases
+
+We used the SEIR program for the Netherlands. The cases netherlands_april9.jon and cases_april9_narrow.jon reproduce
+the models which are described in the presentations which are also on the github.  The prediction below was made april 5 
+suggesting the near reach of the peak of ICU use. The model was marked by relatively low uncertainty regarding 
+future strength of social distancing  
+and did not incorporate yet the gaussian smoothing effects
+
+ ![flow](predictionapril5.JPG)
+ 
+ The model has been updated 4 days later, after the reaching of the peak (or plateau) has indeed been confirmed by the data.
+ The model has been updated for new information on flow of patients and case fatality ratios. The enhanced 
+ flow scheme for hospitalized patients look according to the figure below:
+ 
+  ![flow](hospitalflowparametersapril9.JPG)
+ 
+ The updated model results is given below. This is the result from netherlands_april9, fitted to hospitalized cumulative
+ 
+ ![flow](predictionapril9_hosp.JPG)
+ 
+ ![flow](predictionapril9.JPG)
+     
+ ![flow](predictionapril9_mort.JPG)
+ 
+5 . own input files:
+
+    In the Netherlands input file, custom data is loaded including information on hospitalization, The files should be txt file as corona_dataNL26.txt with  6 columns
 ``` 
     #  column 0 -  day (number starting from 1)
     #  column 1 - cumulative registered infected (postive test cases)
@@ -127,12 +166,12 @@ China.json :
     #  column 5 - actual IC units used (may be estimated or 0)
     #  column 6 - actual hospilatized (put all to 0 to overwrite from estimates calculated from the hospital flow model)
 ```
-5 . output files
+6 . output files
 
 corona_mc/esmda will create several plots and a datafile in csv format in the output directory.
 
-Output file names start with the json name and corona_mc.py
-generates hindcast and forecast  (shown in paper appendix, and fig. 3) as well as ensemble plots.data
+Output file names start with the json name.  corona_mc.py
+generates hindcast and forecast  (shown in paper appendix,  fig. 3) as well as ensemble plots.data
 corona_esmda generates prior and posterior ensembles of dead, hospitalized, etc
 
 The csv file can be used for further post_processing, containing confidence intervals, which can be plotted with running

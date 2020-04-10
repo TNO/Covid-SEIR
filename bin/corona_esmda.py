@@ -1,12 +1,12 @@
 from src.coronaSEIR import base_seir_model
 from src.esmda import InversionMethods
-from src.io_func import load_data, load_config, hospital_forecast_to_txt, save_results
+from src.io_func import load_data, load_config, hospital_forecast_to_txt, save_results, save_input_data
 from src.parse import parse_config, reshape_prior
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from src.tools import generate_hos_actual
+from src.tools import generate_hos_actual, generate_zero_columns
 
 I_TIME = 0
 I_INF = 1
@@ -51,17 +51,17 @@ def plot_prior_and_posterior(results, fwd_args, config, configpath, t_obs, data,
 
     calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD]
     o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD]
-    useworldfile = config['worldfile']
-    if (useworldfile):
-        calmodes = [ S_DEAD]
-        o_indices = [ O_DEAD]
-    else:
-        # check if I_HOS is present in the data, if not generate it
-        print('number of columns in data ', data.shape[1])
-        print('number of rows in data ', data.shape[0])
-        ncol = data.shape[1]
+    #useworldfile = config['worldfile']
+    #if (useworldfile):
+    #    calmodes = [ S_DEAD]
+    #    o_indices = [ O_DEAD]
+    #else:
+    #    # check if I_HOS is present in the data, if not generate it
+    #    print('number of columns in data ', data.shape[1])
+    #    print('number of rows in data ', data.shape[0])
+    #    ncol = data.shape[1]
 
-        data = generate_hos_actual(data, config)
+    #    data = generate_hos_actual(data, config)
 
 
     for i, calmode in enumerate(calmodes):
@@ -184,11 +184,17 @@ def plot_prior_and_posterior(results, fwd_args, config, configpath, t_obs, data,
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data = load_data(config)
+    data,firstdate = load_data(config)
     # concatenate additional column for actual observed hospitalized based
     t_obs = data[:, I_TIME]
 
-    data = generate_hos_actual(data, config)
+    useworldfile = config['worldfile']
+    if (not useworldfile):
+        data = generate_hos_actual(data, config)
+    else:
+        data = generate_zero_columns(data, config)
+        # Run the forward model to obtain a prior ensemble of models
+    save_input_data(configpath, data)
 
 
     calibration_mode = config['calibration_mode']

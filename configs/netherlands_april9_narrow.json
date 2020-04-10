@@ -1,0 +1,79 @@
+{
+  "worldfile": false,
+  "country": "..\\res\\corona_dataNL_april9.txt",
+    "startdate": "3/1/20",
+  "t_max" : 150,
+  "dt" : 0.1,
+  "time_delay": 12,
+  "population": 17e6,
+  "nr_prior_samples": 500,
+  "nr_forecast_samples": 1500,
+  "esmda_iterations": 16,
+  "N" : {
+    "type": "uniform",
+    "min": 50000,
+    "max": 300000
+  },
+  "sigma" : 0.2,
+  "gamma" : 0.5 ,
+  "R0" : {
+    "type": "normal",
+    "mean": 3.4,
+    "stddev": 0.2
+  },
+  "m": 0.9,
+
+  "alpha" : [[0.1,0.5],[0.1,0.5], [0.3,0.9],[0.3,0.9],[0.3,0.9],[0.3,0.9],[0.6,0.95],  [0.6,0.95], [0.7,0.95] ,[0.7,0.95] ,  [0.6,0.95], [0.5,0.95]  ],
+  "dayalpha" : [8,12,15, 18, 19, 20, 21, 22, 23, 24, 26, 30],
+  "delayHOS" : {
+    "type": "uniform",
+     "min": 9,
+      "max": 9
+  },
+  "delayHOSREC" : {
+    "type": "uniform",
+     "min": 14,
+      "max": 14,
+     "smooth_sd": 4
+  },
+  "delayHOSD" : {
+    "type": "uniform",
+     "min": 1,
+      "max": 4
+  },
+  "delayREC" : 12,
+  "delayICUCAND": 0,
+  "delayICUD": {
+    "type": "uniform",
+     "min": 6,
+      "max": 6,
+       "smooth_sd": 3
+  },
+  "delayICUREC": {
+    "type": "uniform",
+     "min": 24,
+      "max": 28,
+      "smooth_sd": 4
+  },
+  "hosfrac" : 0.05,
+  "dfrac" : 0.29,
+  "icudfrac" : 0.29,
+  "ICufrac": 0.35,
+  "icufracfile":  "../res/corona_dataNL_icufrac_april9.txt",
+  "calibration_mode": "hospitalizedcum",
+  "observation_error": 25,
+  "YMAX": 200e3,
+  "XMAX": 60,
+
+  "hist_time_steps": [30,35,40,60],
+  "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
+  "plot" : {
+    "legendloc" : "best",
+    "legendfont" : "x-small",
+    "y_axis_log": true,
+    "hindcast_plume": true,
+    "xmaxalpha": 31,
+     "casename": "Netherlands"
+  }
+
+}

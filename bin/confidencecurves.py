@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.tools import generate_hos_actual
+from src.tools import generate_hos_actual, generate_zero_columns
 
 I_TIME = 0
 I_INF = 1
@@ -35,7 +35,7 @@ S_DEAD = 'dead'
 
 
 
-def plot_confidence_alpha (configpath, config, inputdata):
+def plot_confidence_alpha (configpath, config, inputdata,firstdate):
 
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
@@ -100,7 +100,7 @@ def plot_confidence_alpha (configpath, config, inputdata):
 
 
 
-def plot_confidence (configpath, config, inputdata):
+def plot_confidence (configpath, config, inputdata,firstdate):
 
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
@@ -108,6 +108,7 @@ def plot_confidence (configpath, config, inputdata):
     o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD]
 
     useworldfile = config['worldfile']
+    useworldfile =False
 
     casename = ''
     try:
@@ -222,14 +223,16 @@ def plot_confidence (configpath, config, inputdata):
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data = load_data(config)
+    data,firstdate = load_data(config)
 
     useworldfile = config['worldfile']
     if (not useworldfile):
         data = generate_hos_actual(data, config)
+    else:
+        data = generate_zero_columns(data, config)
 
-    plot_confidence(configpath, config, data)
-    plot_confidence_alpha(configpath, config, data)
+    plot_confidence(configpath, config, data, firstdate)
+    plot_confidence_alpha(configpath, config, data,firstdate)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 import sys
-from src.io_func import load_config, load_data, hospital_forecast_to_txt
+from src.io_func import load_config, load_data, hospital_forecast_to_txt, save_input_data
 from src.parse import parse_config, reshape_prior
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +7,7 @@ import seaborn as sns
 import os
 from vis.general import plot_posterior
 from tqdm import tqdm
-from src.tools import generate_hos_actual
+from src.tools import generate_hos_actual, generate_zero_columns
 
 from src import coronaSEIR
 
@@ -211,14 +211,17 @@ def sample_from_prior(prior,p,config):
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data = load_data(config)
+    data,firstdate = load_data(config)
 
 
 
     useworldfile = config['worldfile']
     if (not useworldfile):
         data = generate_hos_actual(data, config)
+    else:
+        data = generate_zero_columns(data, config)
     # Run the forward model to obtain a prior ensemble of models
+    save_input_data (configpath, data)
     prior, time, prior_param, fwd_args = run_prior(config)
 
     # Calibrate the model (as calibration data, we either use 'hospitalized' or 'dead')

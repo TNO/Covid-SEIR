@@ -33,6 +33,16 @@ def parse_config(config, mode='prior'):
     hosfrac = to_distr(config['hosfrac'], nr_samples)
     dfrac = to_distr(config['dfrac'], nr_samples)
 
+    # add standard dev for gaussian smoothing
+    rec_sd = get_gauss_smooth_sd(config['delayREC']);
+    hos_sd = get_gauss_smooth_sd(config['delayHOS']);
+    hosrec_sd = get_gauss_smooth_sd(config['delayHOSREC']);
+    hosd_sd = get_gauss_smooth_sd(config['delayHOSD']);
+
+    icu_sd = get_gauss_smooth_sd(config['delayICUCAND']);
+    icud_sd = get_gauss_smooth_sd(config['delayICUD']);
+    icurec_sd = get_gauss_smooth_sd(config['delayICUREC']);
+
 
 
     icudfrac = to_distr(config['icudfrac'], nr_samples)
@@ -54,17 +64,30 @@ def parse_config(config, mode='prior'):
     if np.size(icufrac) == np.size(time):
         return_dict['locked']['icufrac'] = icufrac
         params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
-                  delay_icurec, hosfrac, dfrac, icudfrac, m, population]
+                  delay_icurec, hosfrac, dfrac, icudfrac, m, population,
+                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd]
         names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
                  'delay_icu', 'delay_icud', 'delay_icurec', 'hosfrac', 'dfrac', 'icudfrac', 'm',
-                 'population']
+                 'population',
+                 'icured_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd']
     else:
         params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
-                  delay_icurec, hosfrac,icufrac,dfrac,icudfrac, m, population]
+                  delay_icurec, hosfrac,icufrac,dfrac,icudfrac, m, population,
+                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd
+                  ]
         names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
-                 'delay_icu','delay_icud','delay_icurec','hosfrac','icufrac', 'dfrac','icudfrac', 'm', 'population']
+                 'delay_icu','delay_icud','delay_icurec','hosfrac','icufrac', 'dfrac','icudfrac', 'm', 'population',
+                 'icured_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd'
+                    ]
 
     return_dict['locked']['dayalpha'] = dayalpha
+    return_dict['locked']['icu_sd'] = icu_sd
+    return_dict['locked']['icud_sd'] = icud_sd
+    return_dict['locked']['icurec_sd'] = icurec_sd
+    return_dict['locked']['rec_sd'] = rec_sd
+    return_dict['locked']['hos_sd'] = hos_sd
+    return_dict['locked']['hosrec_sd'] = hosrec_sd
+    return_dict['locked']['hosd_sd'] = hosd_sd
 
     for i, param in enumerate(params):
         name = names[i]
@@ -159,6 +182,34 @@ def add_to_dict(dict, array, name):
                 dict['free_param'].append(name)
     return dict
 
+
+
+def get_gauss_smooth_sd(var):
+    """
+    Sample from distributions
+    :param var: either a dict describing a distribution, or a scalar value
+    :return: mean value
+    """
+    if type(var) == dict:
+        if var['type'] == 'uniform':
+            try:
+                rv = var['smooth_sd']
+            except:
+                 rv = 0
+        elif var['type'] == 'normal':
+            try:
+                rv = var['smooth_sd']
+            except:
+                 rv = 0
+        else:
+            raise NotImplementedError('Distribution not implemented')
+    else:
+        rv = 0
+
+
+    ret = rv
+
+    return ret
 
 
 def get_mean(var):

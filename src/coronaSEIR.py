@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import odeint
 
+from src.tools import do_hospitalization_process
+
 
 def base_seir_model(param, dict):
     """
@@ -12,7 +14,8 @@ def base_seir_model(param, dict):
     """
 
     n, r0, sigma, gamma, alpha, delay_hos, delay_rec, delay_hosrec, delay_hosd, hosfrac, \
-    dfrac, icufrac, delay_icu, delay_icud, delay_icurec, icudfrac, m, population, dayalpha = parse_input(param, dict)
+    dfrac, icufrac, delay_icu, delay_icud, delay_icurec, icudfrac, m, population, dayalpha, \
+        rec_sd, hos_sd, hosrec_sd, hosd_sd, icu_sd, icud_sd, icurec_sd  = parse_input(param, dict)
     t = dict['time']
     beta = r0 * gamma
 
@@ -68,70 +71,35 @@ def base_seir_model(param, dict):
     hoscum = np.roll(r, int(delay_hos)) * hosfrac
     hoscum[:int(delay_hos)] = 0
 
+    fracs = [hosfrac, dfrac, icufrac, icudfrac]
+    delays= [delay_rec, delay_hos, delay_hosrec, delay_hosd, delay_icu, delay_icud, delay_icurec]
+    gauss_sd= [rec_sd, hos_sd, hosrec_sd, hosd_sd, icu_sd, icud_sd, icurec_sd]
 
-    #icufrac is the fraction of patients going to ICU at the time of entry in hospital
-    icufrac2 = icufrac
-    # dp frac is the fraction of all  patients dying who did not go to ICU, referenced at entry in the hospital
-    dpfrac = (dfrac - icufrac * icudfrac)/(1.0001-icufrac)  #/ (1 - icufrac * icudfrac)
-    hosday2 = np.concatenate((np.array([0]), np.diff(hoscum)))
-    hosday = hosday2*1.0
-    if (delay_icu>0.01):
-        for i, num in enumerate(hosday):
-            irange = int(delay_icu*2)
-            ilow =int (max(0,(i-irange)))
-            ihigh = int(min(np.size(hosday),i+1 ))
-            hosday[i] = np.mean( hosday2[ilow:ihigh])
-   # check for consistency
-    hoscum2 = np.cumsum(hosday)
-    # construct hospitalization and icu as if nobody dies in the hospital, except icu
-    icuday = hosday*icufrac
-    icucum = np.cumsum(icuday)
-   # icucum = np.roll(icucum, int(delay_icu))
-   # icucum[:int(delay_icu)] = 0
+    dataprocess = do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=gauss_sd, removed=r)
 
-    #recovered from icu, taking into account deaths from icu
-    icu_rechos = np.roll(icucum, int(delay_icurec))  * (1. - icudfrac) # Back to hospital
-    icu_rechos[:int(delay_icurec)] = 0
-    icu_recfull = np.roll(icu_rechos, int(delay_hosrec)) # All who go back to hospital recover, but this takes time
-    # this is the full recovered patients who went through ICU
-    icu_recfull[:int(delay_hosrec)] = 0
+    OP_HOS = 0
+    OP_HOSCUM = 1
+    OP_ICU = 2
+    OP_ICUCUM = 3
+    OP_REC = 4
+    OP_DEAD = 5
 
-    # dead from icu
-    icu_dead = np.roll(icucum, int(delay_icud)) * icudfrac
-    icu_dead[: int(delay_icud)] = 0
+    rec = dataprocess[:,OP_REC, None]
+    hos = dataprocess[:,OP_HOS, None]
+    icu = dataprocess[:,OP_ICU, None]
+    icucum = dataprocess[:,OP_ICUCUM, None]
+    hoscum2 = dataprocess[:,OP_HOSCUM, None]
+    dead = dataprocess[:,OP_DEAD, None]
 
-    # this is the full rovered patients who did not went through ICU
-    rechos = np.roll(hoscum *(1-icufrac)*(1. - dpfrac), int(delay_hosrec))
-    rechos[:int(delay_hosrec)] = 0
-    # dead from hospitalized but not including icu
-    hdead = np.roll(hoscum*(1-icufrac)* dpfrac, int(delay_hosd))
-    hdead[:int(delay_hosd)] = 0
 
-    recmild = np.roll(r, int(delay_rec)) * (1. - hosfrac)
-    recmild[:int(delay_rec)] = 0
-
-    # actual icu is cumulative icu minus icu dead and icu revovered
-    icu = icucum - icu_dead - icu_rechos
-    dead = hdead + icu_dead
-    hos = hoscum - rechos - icu_recfull - dead # includes ICU count
-    rec = rechos + recmild + icu_recfull
-
-    rec = rec[:, None]
-    hos = hos[:, None]
-    icu = icu[:, None]
-    icucum = icucum[:,None]
-    hoscum = hoscum[:, None]
-    dead = dead[:, None]
-
-    # Check balances
-    # sick_home = r - hos - rec - icu - dead
-    # check = sick_home + dead + rec + icu + hos
-    # np.allclose(r, check)
 
     t_out = (t - dict['time_delay'])[:,None]
-    res_out = np.concatenate((t_out,result,hos,hoscum,icu,icucum,rec,dead),axis=-1)
+    res_out = np.concatenate((t_out,result,hos,hoscum2,icu,icucum,rec,dead),axis=-1)
     # Time, Suscep, Expos, Infec, Removed, Hospitalized, Hos (cummulative), ICU, ICU (cummulative), Recovered, Dead
     return res_out.T
+
+
+
 
 
 def parse_input(param, dict):
@@ -165,5 +133,15 @@ def parse_input(param, dict):
     population = get_from_dict('population', dict, param)
     dayalpha = get_from_dict('dayalpha', dict, param)
 
+    rec_sd = get_from_dict('rec_sd', dict, param)
+    hos_sd = get_from_dict('hos_sd', dict, param)
+    hosrec_sd = get_from_dict('hosrec_sd', dict, param)
+    hosd_sd = get_from_dict('hosd_sd', dict, param)
+    icu_sd = get_from_dict('icu_sd', dict, param)
+    icud_sd = get_from_dict('icud_sd', dict, param)
+    icurec_sd = get_from_dict('icurec_sd', dict, param)
+
+
     return n, r0, sigma, gamma, alpha, delay_hos, delay_rec, delay_hosrec, delay_hosd, hosfrac, \
-           dfrac,icufrac,delay_icu,delay_icud,delay_icurec,icudfrac, m, population, dayalpha
+           dfrac,icufrac,delay_icu,delay_icud,delay_icurec,icudfrac, m, population, dayalpha, \
+           rec_sd, hos_sd, hosrec_sd, hosd_sd, icu_sd, icud_sd, icurec_sd

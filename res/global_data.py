@@ -60,7 +60,7 @@ def load_data():
     return c, d, r
 
 
-def get_country_data(country, province=''):
+def get_country_data(country, province='',startdate=''):
     c, d, r = load_data()
 
     if province == '':
@@ -76,7 +76,12 @@ def get_country_data(country, province=''):
         sel_d = d.loc[(d['Country/Region'] == country) & (d['Province/State'] == province)]
         sel_r = r.loc[(r['Country/Region'] == country) & (r['Province/State'] == province)]
 
-    dates = [datetime.strptime(d, "%m/%d/%y") for d in sel_c.columns[4:]]
+    if startdate == '':
+        ind_startdate = 4
+    else:
+        ind_startdate = np.where(sel_c.columns == startdate)[0][0]
+
+    dates = [datetime.strptime(d, "%m/%d/%y") for d in sel_c.columns[ind_startdate:]]
     firstdate = dates[0]
 
     days = [(d-firstdate).days+1 for d in dates]
@@ -85,13 +90,17 @@ def get_country_data(country, province=''):
         print(f'no data in dataset for {country} {province}')
         return None
     elif len(sel_c) > 1:
-        c_data = sel_c.sum().to_numpy()[4:]
-        d_data = sel_d.sum().to_numpy()[4:]
-        r_data = sel_r.sum().to_numpy()[4:]
+        c_data = sel_c.sum().to_numpy()[ind_startdate:]
+        d_data = sel_d.sum().to_numpy()[ind_startdate:]
+        r_data = sel_r.sum().to_numpy()[ind_startdate:]
     else:
-        c_data = sel_c.to_numpy()[0, 4:]
-        d_data = sel_d.to_numpy()[0, 4:]
-        r_data = sel_r.to_numpy()[0, 4:]
+        c_data = sel_c.to_numpy()[0, ind_startdate:]
+        d_data = sel_d.to_numpy()[0, ind_startdate:]
+        r_data = sel_r.to_numpy()[0, ind_startdate:]
+
+    c_data = c_data.astype(float)
+    d_data = d_data.astype(float)
+    r_data = r_data.astype(float)
 
     data = np.stack((days, c_data, d_data, r_data), axis=-1)
 
