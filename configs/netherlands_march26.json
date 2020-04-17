@@ -1,8 +1,8 @@
 {
   "worldfile": false,
-   "country": "..\\res\\corona_dataNL26.txt",
-      "startdate": "3/1/20",
-    "maxrecords":26,
+  "country": "../res/corona_dataNL26.txt",
+  "startdate": "3/1/20",
+  "maxrecords":26,
   "t_max" : 120,
   "dt" : 0.01,
   "time_delay": 8,
@@ -38,10 +38,10 @@
   "icudfrac" : 0.0,
   "calibration_mode": "ICU",
   "observation_error": 10,
-   "YMAX": 100e3,
-   "XMAX": 60,
+  "YMAX": 100e3,
+  "XMAX": 60,
   "ICufrac": 0.55,
-   "icufracfile":  "../res/corona_dataNL_icufrac26.txt",
+  "icufracfile":  "../res/corona_dataNL_icufrac26.txt",
   "hist_time_steps": [30,35,40,60],
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
   "plot" : {
@@ -50,7 +50,7 @@
     "y_axis_log": true,
     "hindcast_plume": true,
     "xmaxalpha": 31,
-     "casename": "Netherlands"
+    "casename": "Netherlands"
   }
 
 

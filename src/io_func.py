@@ -3,6 +3,7 @@ import os
 import h5py
 import numpy as np
 import res.global_data as global_data
+import datetime
 # import res.world_data as world_data
 
 
@@ -50,25 +51,23 @@ def load_data(config):
     useworldfile = config['worldfile']
     country = config["country"]
     province = ''
-    startdate = ''
-    firstdate = ''
     if 'province' in config:
         province = config['province']
     data_offset = 0
-    if 'startdate' in config:
-        startdate = config['startdate']
+    startdate = config['startdate']
     if useworldfile:
         # wdata, firstdate = world_data.get_country_xcdr(country, 'all', dateOffset=data_offset)
         # print(firstdate)
         # data = np.array(wdata)
         data, firstdate = global_data.get_country_data(country, province, startdate)
         print(firstdate)
+        assert datetime.datetime.strptime(startdate, "%m/%d/%y") == firstdate
     else:
         data = np.loadtxt(os.path.join(direc, country))
     if 'maxrecords' in config:
         n = config['maxrecords']
         data = data[:n]
-    return data,firstdate
+    return data
 
 
 def  read_icufrac_data(config, time, time_delay):
@@ -145,6 +144,20 @@ def save_results(results, fwd_args, config, outpath, data, mode):
 
         else:
             raise NotImplementedError
+
+def add_hammer_to_results(hresults, outpath, mode):
+
+    with h5py.File(outpath, 'r+') as hf:
+        # Config
+        if mode == 'esmda':
+            model = hf['model']
+            model['hammered_posterior']=hresults
+        elif mode == 'mcmc':
+            pass
+
+        else:
+            raise NotImplementedError
+
 
 
 def dict_to_h5(base, dictionary):

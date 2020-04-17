@@ -63,21 +63,19 @@ def gauss_smooth_shift(input,  shift, stddev, scale=1.0):
     forcescale = False
     if isinstance(scale, np.ndarray):
         forcescale = True
-    if (forcescale or np.abs(scale-1)>1e-5):
+    if (forcescale or np.abs(scale-1) > 1e-5):
         input = input*scale
 
     result = input
-    if (stddev>0.0):
+    if (stddev > 0.0):
         result = gaussian_filter1d(input, stddev,  mode='nearest')
 
-
     result = np.roll(result, int(shift))
-    if (shift>0):
+    if (shift > 0):
         result[: int(shift)] = 0
     #else:
         # backward roll can simply use the trailing values
     return result
-
 
 
 def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed=None):
@@ -95,8 +93,6 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
     delay_icud = delays[IP_DELAYICUD]
     delay_icurec =delays[IP_DELAYICUREC]
 
-
-
     gauss_sd = [0,0,0,0,0,0,0]
     if isinstance(gauss_stddev, list):
         gauss_sd = gauss_stddev
@@ -109,21 +105,19 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
     icud_sd = gauss_sd[IP_DELAYICUD]
     icurec_sd =gauss_sd[IP_DELAYICUREC]
 
-
-
     # icufrac is the fraction of patients going to ICU at the time of entry in hospital
     icufrac2 = icufrac
     # dp frac is the fraction of all  patients dying who did not go to ICU, referenced at entry in the hospital
     dpfrac = (dfrac - icufrac * icudfrac) / (1.0001 - icufrac)  # / (1 - icufrac * icudfrac)
     hosday2 = np.concatenate((np.array([0]), np.diff(hoscum)))
 
-    hosday = hosday2 *1.0
+    hosday = hosday2 * 1.0
 
-    if (delay_icu>0.01):
+    if (delay_icu > 0.01):
         for i, num in enumerate(hosday):
             irange = int(delay_icu*2)
-            ilow =int (max(0,(i-irange)))
-            mn = np.mean( hosday2[ilow:i+1])
+            ilow = int(max(0,(i-irange)))
+            mn = np.mean(hosday2[ilow:i+1])
             hosday[i] = mn
     # construct hospitalization and icu as if nobody dies in the hospital, except icu
     icuday = hosday * icufrac
@@ -135,12 +129,10 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
 
     icu_rechos = gauss_smooth_shift(icucum, delay_icurec, icurec_sd, (1-icudfrac))
     icu_recfull = gauss_smooth_shift(icu_rechos, delay_hosrec, hosrec_sd, scale_norm)
-    icu_dead  = gauss_smooth_shift(icucum, delay_icud, icud_sd, icudfrac)
-
+    icu_dead = gauss_smooth_shift(icucum, delay_icud, icud_sd, icudfrac)
 
     rechos = gauss_smooth_shift(hoscum, delay_hosrec, hosrec_sd, (1-icufrac)*(1-dpfrac))
     hdead = gauss_smooth_shift(hoscum, delay_hosd, hosd_sd, (1-icufrac)*dpfrac)
-
 
     # actual icu is cumulative icu minus icu dead and icu revovered
     icu = icucum - icu_dead - icu_rechos
@@ -153,7 +145,6 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
 
     recmild = gauss_smooth_shift(r, delay_rec, rec_sd, (1-hosfrac))
 
-
     rec = rechos + recmild + icu_recfull
 
     rec = rec[:, None]
@@ -165,6 +156,7 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
 
     resout= np.concatenate((hos,hoscum,icu,icucum,rec,dead), axis=-1)
     return resout
+
 
 def generate_zero_columns(data, config):
     # generate 3 additional data column (0 is first column index_
@@ -201,15 +193,11 @@ def generate_zero_columns(data, config):
             pass
         hoscum = gauss_smooth_shift(tests, delay_hos2, 0, rate_hoscumfromconfirmed)
 
-
     icu = days*0.0
     hosact = days*0.0
     datanew = np.concatenate((data[:,0:4], hoscum[:,None], icu[:,None], hosact[:,None]), axis=-1)
     datanew = generate_hos_actual(datanew , config)
     return datanew
-
-
-
 
 
 def generate_hos_actual(data, config):
@@ -240,13 +228,19 @@ def generate_hos_actual(data, config):
 
     hoscum = data[:, I_HOSCUM]
 
-
     fracs = [hosfrac, dfrac, icufrac, icudfrac]
-    delays= [delay_rec, delay_hos, delay_hosrec, delay_hosd, delay_icu, delay_icud, delay_icurec]
+    delays = [delay_rec, delay_hos, delay_hosrec, delay_hosd, delay_icu, delay_icud, delay_icurec]
 
-    dataprocess  = do_hospitalization_process(hoscum, delays, fracs)
+    dataprocess = do_hospitalization_process(hoscum, delays, fracs)
     hos = dataprocess[:,OP_HOS]
     hos = hos[:, None]
     datanew = np.concatenate((data[:,0:6], hos), axis=-1)
     return datanew
 
+
+def calc_axis_interval(num_days):
+    if num_days < 70:
+        interval = 7
+    else:
+        interval = 14
+    return interval

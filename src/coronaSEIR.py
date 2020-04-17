@@ -55,7 +55,7 @@ def base_seir_model(param, dict):
 
         return dydt
 
-    time_inflation = 5  # To get smooth ODE response dispite step functions in alpha
+    time_inflation = 5  # To get smooth ODE response despite step functions in alpha
     t_new = np.linspace(t.min(), t.max(), (len(t) - 1) * time_inflation + 1)
     result = odeint(ode, init_vals, t_new,
                     args=(beta, sigma, gamma, alpha_t))
@@ -84,6 +84,7 @@ def base_seir_model(param, dict):
     OP_REC = 4
     OP_DEAD = 5
 
+
     rec = dataprocess[:,OP_REC, None]
     hos = dataprocess[:,OP_HOS, None]
     icu = dataprocess[:,OP_ICU, None]
@@ -91,10 +92,12 @@ def base_seir_model(param, dict):
     hoscum2 = dataprocess[:,OP_HOSCUM, None]
     dead = dataprocess[:,OP_DEAD, None]
 
+    cuminf = result[:,2] + result[:,3]
+
 
 
     t_out = (t - dict['time_delay'])[:,None]
-    res_out = np.concatenate((t_out,result,hos,hoscum2,icu,icucum,rec,dead),axis=-1)
+    res_out = np.concatenate((t_out,result,hos,hoscum2,icu,icucum,rec,dead, cuminf[:,None]),axis=-1)
     # Time, Suscep, Expos, Infec, Removed, Hospitalized, Hos (cummulative), ICU, ICU (cummulative), Recovered, Dead
     return res_out.T
 

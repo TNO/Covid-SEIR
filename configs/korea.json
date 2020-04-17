@@ -1,9 +1,9 @@
 {
-   "worldfile": true,
-   "country": "Korea, South",
-    "startdate": "1/22/20",
+  "worldfile": true,
+  "country": "Korea, South",
+  "startdate": "1/22/20",
   "t_max" : 90,
-   "maxrecords": 60,
+  "maxrecords": 60,
   "dt" : 1,
   "time_delay": 0,
   "population": 50e6,
@@ -11,10 +11,10 @@
   "nr_forecast_samples": 1500,
   "esmda_iterations": 16,
   "N" : {
-        "type": "uniform",
+    "type": "uniform",
     "min":  3000000,
     "max":  7000000
-    },
+  },
   "sigma" : 0.2,
   "gamma" : 0.5,
   "R0" : {
@@ -46,8 +46,8 @@
     "legendloc" : "best",
     "legendfont" : "x-small",
     "y_axis_log": true,
-       "hindcast_plume": false,
-        "xmaxalpha": 31,
-     "casename": "Netherlands"
+    "hindcast_plume": false,
+    "xmaxalpha": 31,
+    "casename": "Netherlands"
   }
 }

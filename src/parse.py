@@ -34,14 +34,14 @@ def parse_config(config, mode='prior'):
     dfrac = to_distr(config['dfrac'], nr_samples)
 
     # add standard dev for gaussian smoothing
-    rec_sd = get_gauss_smooth_sd(config['delayREC']);
-    hos_sd = get_gauss_smooth_sd(config['delayHOS']);
-    hosrec_sd = get_gauss_smooth_sd(config['delayHOSREC']);
-    hosd_sd = get_gauss_smooth_sd(config['delayHOSD']);
+    rec_sd = to_gauss_smooth_dist(config['delayREC'], nr_samples);
+    hos_sd = to_gauss_smooth_dist(config['delayHOS'], nr_samples);
+    hosrec_sd = to_gauss_smooth_dist(config['delayHOSREC'], nr_samples);
+    hosd_sd = to_gauss_smooth_dist(config['delayHOSD'], nr_samples);
 
-    icu_sd = get_gauss_smooth_sd(config['delayICUCAND']);
-    icud_sd = get_gauss_smooth_sd(config['delayICUD']);
-    icurec_sd = get_gauss_smooth_sd(config['delayICUREC']);
+    icu_sd = to_gauss_smooth_dist(config['delayICUCAND'], nr_samples);
+    icud_sd = to_gauss_smooth_dist(config['delayICUD'], nr_samples);
+    icurec_sd = to_gauss_smooth_dist(config['delayICUREC'], nr_samples);
 
 
 
@@ -81,13 +81,13 @@ def parse_config(config, mode='prior'):
                     ]
 
     return_dict['locked']['dayalpha'] = dayalpha
-    return_dict['locked']['icu_sd'] = icu_sd
-    return_dict['locked']['icud_sd'] = icud_sd
-    return_dict['locked']['icurec_sd'] = icurec_sd
-    return_dict['locked']['rec_sd'] = rec_sd
-    return_dict['locked']['hos_sd'] = hos_sd
-    return_dict['locked']['hosrec_sd'] = hosrec_sd
-    return_dict['locked']['hosd_sd'] = hosd_sd
+    # return_dict['locked']['icu_sd'] = icu_sd
+    # return_dict['locked']['icud_sd'] = icud_sd
+    # return_dict['locked']['icurec_sd'] = icurec_sd
+    # return_dict['locked']['rec_sd'] = rec_sd
+    # return_dict['locked']['hos_sd'] = hos_sd
+    # return_dict['locked']['hosrec_sd'] = hosrec_sd
+    # return_dict['locked']['hosd_sd'] = hosd_sd
 
     for i, param in enumerate(params):
         name = names[i]
@@ -184,7 +184,7 @@ def add_to_dict(dict, array, name):
 
 
 
-def get_gauss_smooth_sd(var):
+def get_gauss_smooth_sd_old(var):
     """
     Sample from distributions
     :param var: either a dict describing a distribution, or a scalar value
@@ -210,6 +210,9 @@ def get_gauss_smooth_sd(var):
     ret = rv
 
     return ret
+
+
+
 
 
 def get_mean(var):
@@ -257,6 +260,40 @@ def to_distr(var, nr_samples):
 
     return ret
 
+def to_gauss_smooth_dist(var, nr_samples):
+    """
+    Sample from distributions
+    :param var: either a dict describing a distribution, or a scalar value
+    :return: distributon of gaussian smoothing
+    """
+    if type(var) == dict:
+        if var['type'] == 'uniform':
+            try:
+                rv = norm(loc=var['smooth_sd'], scale=var['smooth_sd_sd'])
+            except:
+                try:
+                    rv = uniform(loc=var['smooth_sd'] - 5e-10, scale=1e-9)
+                except:
+                    rv = uniform(loc= - 5e-10, scale=1e-9)
+        elif var['type'] == 'normal':
+            try:
+                rv = norm(loc=var['smooth_sd'], scale=var['smooth_sd_sd'])
+            except:
+                try:
+                    rv = uniform(loc=var['smooth_sd'] - 5e-10, scale=1e-9)
+                except:
+                    rv = uniform(loc= - 5e-10, scale=1e-9)
+        else:
+            raise NotImplementedError('Distribution not implemented')
+    else:
+        rv = uniform(loc= - 5e-10, scale=1e-9)
+
+    if nr_samples == 'mcmc':
+        ret = rv
+    else:
+        ret = rv.rvs(nr_samples).clip(min=0)
+
+    return ret
 
 def reshape_prior(params):
     return [[entry[i] for entry in params] for i in range(len(params[0]))]

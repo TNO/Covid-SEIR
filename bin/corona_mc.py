@@ -1,4 +1,6 @@
 import sys
+
+from bin.corona_esmda import get_calibration_modes
 from src.io_func import load_config, load_data, hospital_forecast_to_txt, save_input_data
 from src.parse import parse_config, reshape_prior
 import matplotlib.pyplot as plt
@@ -7,7 +9,9 @@ import seaborn as sns
 import os
 from vis.general import plot_posterior
 from tqdm import tqdm
-from src.tools import generate_hos_actual, generate_zero_columns
+from src.tools import generate_hos_actual, generate_zero_columns, calc_axis_interval
+import datetime
+import matplotlib.dates as mdates
 
 from src import coronaSEIR
 
@@ -32,6 +36,7 @@ O_ICU = 7
 O_ICUCUM = 8
 O_REC = 9
 O_DEAD = 10
+O_CUMINF = 11
 
 
 def run_prior(config):
@@ -46,7 +51,7 @@ def run_prior(config):
     m_prior = reshape_prior(m_prior)
 
     # Run simulation
-    results = np.zeros((len(m_prior), 11, len(fwd_args['time'])))
+    results = np.zeros((len(m_prior), 12, len(fwd_args['time'])))
     for i in tqdm(range(len(m_prior)), desc='Running prior ensemble'):
         param = m_prior[i]
         results[i] = coronaSEIR.base_seir_model(param,fwd_args)
@@ -113,7 +118,7 @@ def rerun_model_with_alpha_uncertainty(model_conf, p, config,fwd_args):
             post[:,i] = model_conf[alpha_sample_indices,i]
 
     # Run simulation
-    results = np.zeros((post.shape[0], 11, len(fwd_args['time'])))
+    results = np.zeros((post.shape[0], 12, len(fwd_args['time'])))
     for i in tqdm(range(post.shape[0]), desc='Running posterior ensemble'):
         param = post[i]
         results[i] = coronaSEIR.base_seir_model(param, fwd_args)
@@ -123,9 +128,14 @@ def rerun_model_with_alpha_uncertainty(model_conf, p, config,fwd_args):
 
 
 
-def plot_results(results, t, configpath, config, data, integrated_result=None, cal_mode=None, prior=True, plot_plume= True):
+def plot_results(results, time, configpath, config, data, integrated_result=None, cal_mode=None, prior=True, plot_plume= True):
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+
+    date_1 = datetime.datetime.strptime(config['startdate'], "%m/%d/%y")
+    t = [date_1 + datetime.timedelta(days=a - 1) for a in time]
+
+    t_obs = [date_1 + datetime.timedelta(days=a - 1) for a in data[:,0]]
 
     fig_base = configpath.split('/')[-1][0:-5]
     fig, ax = plt.subplots()
@@ -144,7 +154,8 @@ def plot_results(results, t, configpath, config, data, integrated_result=None, c
         ax.plot(t, np.full_like(t, fill_value=np.nan), color='black', label='recovered')
 
         ax.plot(t, results[0:, O_EXP, :].T, color='magenta', alpha=transparancy)
-        ax.plot(t, results[0:, O_INF, :].T + results[0:, O_REM, :].T, color='red', alpha=transparancy)
+       # ax.plot(t, results[0:, O_INF, :].T + results[0:, O_REM, :].T, color='red', alpha=transparancy)
+        ax.plot(t, results[0:, O_CUMINF, :].T , color='red', alpha=transparancy)
         ax.plot(t, results[0:, O_HOSCUM, :].T, color='green', alpha=transparancy)
         ax.plot(t, results[0:, O_DEAD, :].T, color='blue', alpha=transparancy)
         ax.plot(t, results[0:, O_REC, :].T, color='black', alpha=transparancy)
@@ -156,7 +167,11 @@ def plot_results(results, t, configpath, config, data, integrated_result=None, c
     y_lim = config['YMAX']
     x_lim = config['XMAX']
     plt.ylim(1, y_lim)
-    plt.xlim(1, x_lim)
+    plt.xlim(date_1, t[x_lim])
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+    day_interval = calc_axis_interval((t[x_lim] - date_1).days)
+    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+    plt.gcf().autofmt_xdate()
 
     if config['plot']['y_axis_log']:
         plt.semilogy()
@@ -166,14 +181,16 @@ def plot_results(results, t, configpath, config, data, integrated_result=None, c
     plt.savefig('{}_priors_MC_{}.png'.format(outpath, cal_mode), dpi=300)
 
     if not config['worldfile']:
-        plt.plot(data[:, 0], data[:, I_HOSCUM], "go", markersize=2, markeredgecolor='k', alpha=1, label='hospitalized cum (data)')
-    plt.plot(data[:, 0], data[:, I_INF], "r<", markersize=2, markeredgecolor='k', alpha=1, label='infected cum (data)')
-    plt.plot(data[:, 0], data[:, I_DEAD], "bx", markersize=2, markeredgecolor='k', alpha=1, label='deceased(data)')
-    plt.plot(data[:, 0], data[:, I_REC], ">", markersize=2, markeredgecolor='k', alpha=1, label='recovered(data)')
+        plt.plot(t_obs, data[:, I_HOSCUM], "go", markersize=2, markeredgecolor='k', alpha=1, label='hospitalized cum (data)')
+    plt.plot(t_obs, data[:, I_INF], "r<", markersize=2, markeredgecolor='k', alpha=1, label='infected cum (data)')
+    plt.plot(t_obs, data[:, I_DEAD], "bx", markersize=2, markeredgecolor='k', alpha=1, label='deceased(data)')
+    plt.plot(t_obs, data[:, I_REC], ">", markersize=2, markeredgecolor='k', alpha=1, label='recovered(data)')
 
 
     if type(integrated_result) == np.ndarray:
-        cuminfected  = integrated_result[O_INF] +integrated_result[O_REM]
+        #cuminfected = integrated_result[O_INF] + integrated_result[O_REM]
+        cuminfected = integrated_result[O_CUMINF]
+
         if plot_plume:
             if not config['worldfile']:
                 ax.plot(t, integrated_result[O_HOSCUM], color='green')
@@ -211,7 +228,7 @@ def sample_from_prior(prior,p,config):
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data,firstdate = load_data(config)
+    data= load_data(config)
 
 
 
@@ -225,16 +242,17 @@ def main(configpath):
     prior, time, prior_param, fwd_args = run_prior(config)
 
     # Calibrate the model (as calibration data, we either use 'hospitalized' or 'dead')
-    if config['calibration_mode'] == 'dead':
+    calibration_mode = get_calibration_modes(config['calibration_mode'])[0]
+    if calibration_mode == 'dead':
         data_index = I_DEAD
         output_index = O_DEAD
-    elif config['calibration_mode'] == 'hospitalized':
+    elif calibration_mode == 'hospitalized':
         data_index = I_HOS
         output_index = O_HOS
-    elif config['calibration_mode'] == 'hospitalizedcum':
+    elif calibration_mode == 'hospitalizedcum':
         data_index = I_HOSCUM
         output_index = O_HOSCUM
-    elif config['calibration_mode'] == 'ICU':
+    elif calibration_mode == 'ICU':
         data_index = I_ICU
         output_index = O_ICU
     else:
@@ -246,7 +264,7 @@ def main(configpath):
     integrated_results = integrate_calibration(prior, p)  # Mean posterior model
 
     # Create output of the calibration phase
-    plot_results(prior, time, configpath, config, data, integrated_results, config['calibration_mode'], prior=True, plot_plume= plotplume )
+    plot_results(prior, time, configpath, config, data, integrated_results, calibration_mode, prior=True, plot_plume= plotplume )
 
     # Based on the model performance in the past, run models again, forecasting the future 
 

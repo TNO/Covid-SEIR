@@ -16,7 +16,7 @@ http://dx.doi.org/10.2471/BLT.20.256743
 
 The program has been tested under python 3.7
 
-the figures from the dutch model april 9 are also explained in the pdf in the root directory of github
+the figures from the dutch model april 9 and 13 are also explained in the pdf in the root directory of github
 
 
 
@@ -37,7 +37,7 @@ from the bin directory as working directory, so the settings (e.g. in pycharm sh
 After running esmda you can run confidencecurves.py to generate colored plots displaying expected mean, and confidence intervals for ICU,
 hospitalized cum, hospitalized and mortalities. For all a zoom close to the actual end of the observation data and a
 plot over the selected axis range (controlled by XMAX and YMAX)
-```
+```json
 For corona_mc.py
   script path: {your git corona dir}/bin/corona_mc.py
   parameters: {your git corona dir}../configs/netherlands_march26.json
@@ -56,7 +56,7 @@ For confidencecurves.py
 3. formats of input and meaning of parameters
 
 China.json :
-```
+```json
 {
   "worldfile": true,   #  USE John Hopkins  repository for data
   "country": "China",  # name of country in repository or local datafile name e.g. "../res/corona_dataNL_april9.txt",
@@ -93,7 +93,7 @@ China.json :
   *For the times to move from Removed in the SEIR model to recover or  die, we used in the WHO paper very simple settings for the hospital flow, resulting in an average stay of ICU patients of 14 days. In the mean time we improved the flow parameters as depicted  below. In order to be in agreement with the WHO paper, below we show settings in accordance with the average stay. The ICUdfrac has been set artificilly to 0.0 to obtain results which are very similar to the WHO paper results.  Evidently the flow diagram allows realistic settings in accordance with country specific or time dependent measures*
   
   ![flow](hospitalFlowParameters.JPG)
-```
+```json
   "delayHOS" : 5,          # delay between recovered and hospitalization (days)
   "delayHOSREC" : 14,      # average time for recovery of hopsitalized patients not in need for ICU
   "delayHOSD" : 3,        # average time for death of hopsitalized patients not in need for ICU

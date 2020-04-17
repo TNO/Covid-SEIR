@@ -2,10 +2,14 @@ import os
 import warnings
 
 from src.io_func import load_config, load_data
+from src.tools import calc_axis_interval
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
+import matplotlib.dates as mdates
 
+from src.parse import get_mean
 from src.tools import generate_hos_actual, generate_zero_columns
 
 I_TIME = 0
@@ -27,203 +31,273 @@ O_ICU = 7
 O_ICUCUM = 8
 O_REC = 9
 O_DEAD = 10
+O_CUMINF = 11
 
 S_HOS = 'hospitalized'
 S_ICU = 'ICU'
 S_HOSCUM = 'hospitalizedcum'
 S_DEAD = 'dead'
+S_INF = 'infected'
 
 
-
-def plot_confidence_alpha (configpath, config, inputdata,firstdate):
+def plot_confidence_alpha(configpath, config, inputdata, firstdate):
 
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
-    modelpath = '{}_posterior_prob_{}_calibrated_on_{}.csv'.format(outpath, 'alpha', config['calibration_mode'])
+
+    names = ['posterior', 'prior']
 
 
-   # modelpath = 'c:\\Users\\weesjdamv\\git\\corona\\configs\\r0_reductie_rivm.csv'
-    # read the
-    warnings.filterwarnings("error")
-    try:
-        modeldata = np.genfromtxt(modelpath, names=True, delimiter=',')
-    except IOError as e:
-        print ( 'no alpha file found (rerun esmda), expecting alpha in:', modelpath)
-        return
+    for i in range(0, 2):
+        modelpath = '{}_{}_prob_{}_calibrated_on_{}.csv'.format(outpath, names[i], 'alpha', config['calibration_mode'])
 
-    xmax  = config['XMAX']
-    # read xmax
-    try:
-        xmax = config['plot']['xmaxalpha']
-    except :
-        print('no xmaxalpha in plot parameters, using XMAX:', xmax)
-        pass
+        # modelpath = 'c:\\Users\\weesjdamv\\git\\corona\\configs\\r0_reductie_rivm.csv'
+        # read the
+        warnings.filterwarnings("error")
+        try:
+            modeldata = np.genfromtxt(modelpath, names=True, delimiter=',')
+        except IOError as e:
+            print('No alpha file found (rerun esmda), expecting alpha in:', modelpath)
+            return
+
+        xmax = config['XMAX']
+        time_delay = config['time_delay']
+        xmax = xmax + time_delay
+        # read xmax
+        try:
+            xmax = config['plot']['xmaxalpha'] + time_delay
+        except :
+            print('No xmaxalpha in plot parameters, using XMAX:', xmax)
+            pass
+
+        casename = ''
+        try:
+            casename = config['plot']['casename']
+        except:
+            print('No casename in plot parameters')
+            pass
+
+        conf_level = [a for a in modeldata.dtype.names if 'P' in a]
+        conf_range = float(conf_level[-1].strip('P')) - float(conf_level[0].strip('P'))
+        time = modeldata['time']
+
+
+        date_1 = datetime.datetime.strptime(firstdate, "%m/%d/%y")
+        t = [date_1 + datetime.timedelta(days=a - 1) for a in time]
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+        day_interval = calc_axis_interval((t[xmax] - t[0]).days)
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+
+        fig, ax = plt.subplots()
+        try:
+            figure_size = config['plot']['figure_size']
+            assert len(figure_size) == 2
+            plt.figure(figsize=figure_size)
+        except:
+            pass
+
+
+        title = '1-$\\alpha$'
+        symcolor = ['violet', 'purple']
+        ls = ['-', '--']
+        for ilevel, cl in enumerate(conf_level[2:-2]):
+            plt.plot(t, 1-modeldata[cl], label=cl, c='k', ls=ls[ilevel], lw=0.25)
+        for iconf in range(0, 2):
+            conf_range = float(conf_level[-1-iconf].strip('P')) - float(conf_level[iconf].strip('P'))
+            plt.fill_between(t, 1-modeldata[conf_level[iconf]], 1-modeldata[conf_level[-1-iconf]],
+                             label='{}% confidence interval'.format(conf_range), color=symcolor[iconf])
+        plt.grid(True)
+
+        plt.legend(loc='lower left')
+        plt.xlabel('Date')
+        plt.ylabel('Number of cases')
+        title = title + ' ' + casename
+        plt.title(title)
+        # plt.yscale('log')
+        # plt.savefig('Hospital_cases_log.png', dpi=300)
+        plt.yscale('linear')
+        plt.xlim([date_1, t[xmax]])
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+        day_interval = calc_axis_interval((t[xmax] - t[0]).days)
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+        plt.gcf().autofmt_xdate()
+        plt.ylim(0, 1)
+        outputpath = '{}_{}_prob_{}_calibrated_on_{}.png'.format(outpath, names[i], 'alpha', config['calibration_mode'])
+        plt.savefig(outputpath, dpi=300)
+
+
+def plot_confidence(configpath, config, inputdata, firstdate):
+
+    base = (os.path.split(configpath)[-1]).split('.')[0]
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+    calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD, S_INF]
+    o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD, O_CUMINF]
+
+    titles = ['Hospitalized', 'ICU', 'Hospitalized Cum.', 'Mortalities', 'Infected']
+    #['lightcoral', 'brown']
+    #['mistyrose', 'lightcoral'],
+    symcolors = [['powderblue','steelblue' ],['peachpuff', 'sandybrown'], ['lightgreen','forestgreen' ], ['silver', 'grey'], ['mistyrose', 'lightcoral']]
+    y_obs_s = [inputdata[:, I_HOS], inputdata[:, I_ICU], inputdata[:, I_HOSCUM], inputdata[:, I_DEAD], inputdata[:,I_INF]]
+    y_maxdef = config['YMAX']
+    y_maxhos = y_maxdef * get_mean(config['hosfrac'])
+    y_maxicu = y_maxhos * get_mean(config['ICufrac'])
+    y_maxdead = y_maxhos * get_mean(config['dfrac']) * 4
+    y_maxinf = y_maxdef*5
+    y_max = [y_maxhos, y_maxicu, y_maxhos*4, y_maxdead, y_maxinf]
 
     casename = ''
     try:
         casename = config['plot']['casename']
     except:
-        print('no casename in plot parameters')
+        print('No casename in plot parameters')
         pass
 
-
-    conf_level = [a for a in modeldata.dtype.names if 'P' in a]
-    conf_range = float(conf_level[-1].strip('P')) - float(conf_level[0].strip('P'))
-    t = modeldata['time']
-
-
-    fig, ax = plt.subplots()
-    # plt.figure()
-
-    title = '1-alpha'  #'r$\alpha$'
-    symcolor = 'silver'
-    ls = [':', '-', '--', '-.']
-    for i, cl in enumerate(conf_level[1:-1]):
-        lw = 1.5 if cl == 'P50' else 0.5
-        plt.plot(t, 1-modeldata[cl], label=cl, c='k', ls=ls[i], lw=lw)
-    plt.fill_between(t, 1-modeldata[conf_level[0]], 1-modeldata[conf_level[-1]],
-                     label='{}% confidence interval'.format(conf_range), color=symcolor)
-    plt.grid(True)
-
-    plt.legend(loc='lower left')
-    plt.xlabel('Days')
-    plt.ylabel('number of cases')
-    title = title +' '+casename
-    plt.title(title)
-    # plt.yscale('log')
-    # plt.savefig('Hospital_cases_log.png', dpi=300)
-    plt.yscale('linear')
-    plt.xlim(0, xmax)
-    plt.ylim(0, 1)
-    outputpath = '{}_posterior_prob_{}_calibrated_on_{}.png'.format(outpath, 'alpha', config['calibration_mode'])
-    plt.savefig(outputpath, dpi=300)
-
-
-
-def plot_confidence (configpath, config, inputdata,firstdate):
-
-    base = (os.path.split(configpath)[-1]).split('.')[0]
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
-    calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD]
-    o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD]
-
-    useworldfile = config['worldfile']
-    useworldfile =False
-
-    casename = ''
+    daily = False
     try:
-        casename = config['plot']['casename']
+        daily = config['plot']['daily']
     except:
-        print('no casename in plot parameters')
+        print('No daily in plot parameters, assuming cumulative display of mortalities and hospitalized cum. Infected, ICU and hospitalized plotted as actual')
         pass
 
-    x_obs = inputdata[:,0];
+    x_obs = inputdata[:, 0]
     xmax = config['XMAX']
+    time_delay = config['time_delay']
+    xmax = xmax + time_delay
     #  make four output plots for hospitalized, cum hospitalized, dead, and hosm
     for i, calmode in enumerate(calmodes):
         output_index = o_indices[i]
         y_obs = None
-        if calmode == S_HOS:
-            title = 'Hospitalized'
-            ymax = config['YMAX'] * config['hosfrac']
-            if not useworldfile:
-                y_obs = inputdata[:, I_HOS]
-            symcolor = 'lightskyblue'
-        elif calmode == S_ICU:
-            title = 'ICU'
-            ymax = config['YMAX'] * config['hosfrac'] * config['ICufrac']
-            if not useworldfile:
-                y_obs = inputdata[:, I_ICU]
-            symcolor = 'coral'
-        elif calmode == S_HOSCUM:
-            title = 'Hospitalized Cumulative'
-            ymax = config['YMAX'] * config['hosfrac'] * 4
-            if not useworldfile:
-                y_obs = inputdata[:, I_HOSCUM]
-            symcolor = 'aquamarine'
-        elif calmode == S_DEAD:
-            title = 'Mortalities'
-            ymax = config['YMAX'] * config['hosfrac'] * config['dfrac'] * 4
-            symcolor = 'lightgrey'
-            if not useworldfile:
-                y_obs = inputdata[:, I_DEAD]
-        else:
-            ymax = config['YMAX']
+        title = titles[i]
+        symcolor = symcolors[i]
+        y_obs = y_obs_s[i]
+        ymax = y_max[i]
+
+        if (daily):
+            if ((i==2) or (i==3) or (i==4)):
+                y_obs = np.concatenate((np.array([0]), np.diff(y_obs)))
+                title = 'Daily ' + titles[i]
+                ymax = ymax *0.1
 
         # read the
         modelpath = '{}_posterior_prob_{}_calibrated_on_{}.csv'.format(outpath, calmode, config['calibration_mode'])
         modeldata = np.genfromtxt(modelpath, names=True, delimiter=',')
+
         conf_level = [a for a in modeldata.dtype.names if 'P' in a]
-        conf_range = float(conf_level[-1].strip('P')) - float(conf_level[0].strip('P'))
-        t = modeldata['time']
+        if (daily):
+            if ((i == 2) or (i == 3)or (i==4)):
+                for ilevel, cl in enumerate(conf_level):
+                    modeldata[cl] = np.concatenate((np.array([0]), np.diff(modeldata[cl])))
+                modeldata['mean'] = np.concatenate((np.array([0]), np.diff(modeldata['mean'])))
+
+
+        time = modeldata['time']
         mean = modeldata['mean']
 
-
-
-     #   if (calmode==S_ICU):
-     #       tbreakdown = 120
-     #       corrbreakdown =  0.17 / 0.35
-     #       tcorr = t*0 +1
-     #       #[corrbreakdown if  i>tbreakdown else num for i, num in enumerate(tcorr)]
-     #       for i, num in enumerate(tcorr):
-     #          if (i>tbreakdown):
-     #               tcorr[i] = corrbreakdown
-     #       offset = mean[tbreakdown]
-     #       mean = tcorr * (mean- offset) + offset
-     #       for i, cl in enumerate(conf_level):
-     #           offset = modeldata[cl][tbreakdown]
-     #           modeldata[cl] = tcorr * (modeldata[cl] - offset) + offset
-
-
-        fig, ax = plt.subplots()
-        #plt.figure()
+        # fig, ax = plt.subplots()
+        try:
+            figure_size = config['plot']['figure_size']
+            assert len(figure_size) == 2
+            plt.figure(figsize=figure_size)
+        except:
+            pass
+        # plt.figure()
+        date_1 = datetime.datetime.strptime(firstdate, "%m/%d/%y")
+        t = [date_1 + datetime.timedelta(days=a - 1) for a in time]
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+        day_interval = calc_axis_interval((t[xmax] - t[0]).days)
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
 
         plt.plot(t, mean, label='Mean (Expectation value)', c='k', lw=0.5)
-        ls = [':', '-', '--', '-.']
-        for i, cl in enumerate(conf_level[1:-1]):
-            lw = 1.5 if cl=='P50' else 0.5
-            plt.plot(t, modeldata[cl], label=cl, c='k', ls=ls[i], lw=lw)
-        plt.fill_between(t, modeldata[conf_level[0]], modeldata[conf_level[-1]],
-                         label='{}% confidence interval'.format(conf_range), color=symcolor)
+        symcolor = symcolors[i]
+        ls = ['-', '--']
+        for ilevel, cl in enumerate(conf_level[2:-2]):
+            plt.plot(t, modeldata[cl], label=cl, c='k', ls=ls[ilevel], lw=0.25)
+        for iconf in range(0, 2):
+            conf_range = float(conf_level[-1-iconf].strip('P')) - float(conf_level[iconf].strip('P'))
+            c = symcolor[iconf]
+            plt.fill_between(t, modeldata[conf_level[iconf]], modeldata[conf_level[-1-iconf]],
+                             label='{}% confidence interval'.format(conf_range), color=c)
         if y_obs.any():
-           plt.scatter(x_obs, y_obs, c='k', label='data',marker='o',s=8)
+            x_days = [date_1 + datetime.timedelta(days=a - 1) for a in x_obs]
+            plt.scatter(x_days, y_obs, c='k', label='data', marker='o', s=8)
 
         plt.grid(True)
 
-        plt.legend(loc='upper left')
-        plt.xlabel('Days')
-        plt.ylabel('number of cases')
+        legendloc = 'upper left'
+        try:
+            legendloc = config['plot']['legendloc']
+        except:
+            print('No legendloc plot parameters, taking', legendloc)
+            pass
+
+
+        plt.legend(loc=legendloc)
+        plt.xlabel('Date')
+        plt.ylabel('Number of cases')
         title = title + ' ' + casename
         plt.title(title)
-        #plt.yscale('log')
-        #plt.savefig('Hospital_cases_log.png', dpi=300)
+        # plt.yscale('log')
+        # plt.savefig('Hospital_cases_log.png', dpi=300)
         plt.yscale('linear')
-        plt.xlim([t[0],t[-1]])
-        plt.ylim(0,ymax)
-        outputpath =  '{}_posterior_prob_{}_calibrated_on_{}.png'.format(outpath, calmode, config['calibration_mode'])
+        #plt.xlim([t[0], t[-1]])
+        plt.xlim([t[0], t[xmax]])
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+        day_interval = calc_axis_interval((t[xmax] - t[0]).days)
+        plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+        plt.gcf().autofmt_xdate()
+        plt.ylim(0, ymax)
+        outputpath = '{}_posterior_prob_{}_calibrated_on_{}.png'.format(outpath, calmode, config['calibration_mode'])
         plt.savefig(outputpath, dpi=300)
 
         if y_obs.any():
-            plt.legend(loc='lower right')
+            # Have to make a new plot to change the size
+            plt.figure(figsize=plt.rcParams["figure.figsize"])
+
+            plt.plot(t, mean, label='Mean (Expectation value)', c='k', lw=0.5)
+            for ilevel, cl in enumerate(conf_level[2:-2]):
+                plt.plot(t, modeldata[cl], label=cl, c='k', ls=ls[ilevel], lw=0.25)
+            for iconf in range(0, 2):
+                conf_range = float(conf_level[-1 - iconf].strip('P')) - float(conf_level[iconf].strip('P'))
+                c = symcolor[iconf]
+                plt.fill_between(t, modeldata[conf_level[iconf]], modeldata[conf_level[-1 - iconf]],
+                                 label='{}% confidence interval'.format(conf_range), color=c)
+            if y_obs.any():
+                x_days = [date_1 + datetime.timedelta(days=a - 1) for a in x_obs]
+                plt.scatter(x_days, y_obs, c='k', label='data', marker='o', s=8)
+
+            plt.grid(True)
+            plt.xlabel('Date')
+            plt.ylabel('Number of cases')
+            title = title + ' ' + casename
+            plt.title(title)
+            plt.yscale('linear')
+
+            legendloc = 'lower right'
+            try:
+                legendloc = config['plot']['legendloczoom']
+            except:
+                print('No legendloczoom plot zoom parameters, taking', legendloc)
+                pass
+            plt.legend(loc=legendloc)
             inow = np.size(y_obs)
             i1 = inow-15
-            i1 = max(0,i1)
-            ax.axvline(x=inow, color='silver')
+            i1 = max(0, i1)
+            # ax.axvline(x=inow, color='silver')
             i2 = i1 + 25
             plt.xlim([t[i1], t[i2]])
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+            day_interval = calc_axis_interval((t[i2] - t[i1]).days)
+            plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
             plt.ylim(np.min(modeldata[conf_level[0]][i1:i2]), np.max(modeldata[conf_level[-1]][i1:i2]))
             outputpath = '{}_posterior_prob_{}_calibrated_on_{}_zoom.png'.format(outpath, calmode, config['calibration_mode'])
             plt.savefig(outputpath, dpi=300)
             plt.close()
 
 
-
-
-
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data,firstdate = load_data(config)
+    data = load_data(config)
 
     useworldfile = config['worldfile']
     if (not useworldfile):
@@ -231,8 +305,8 @@ def main(configpath):
     else:
         data = generate_zero_columns(data, config)
 
-    plot_confidence(configpath, config, data, firstdate)
-    plot_confidence_alpha(configpath, config, data,firstdate)
+    plot_confidence(configpath, config, data, config['startdate'])
+    plot_confidence_alpha(configpath, config, data, config['startdate'])
 
 
 if __name__ == '__main__':

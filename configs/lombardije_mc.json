@@ -1,19 +1,19 @@
 {
-   "worldfile": false,
-   "country": "../res/corona_dataLombardije.txt",
-    "startdate": "3/1/20",
+  "worldfile": false,
+  "country": "../res/corona_dataLombardije.txt",
+  "startdate": "3/1/20",
   "t_max" : 90,
   "dt" : 0.1,
   "time_delay": 30,
   "population": 10e6,
   "nr_prior_samples": 400,
   "nr_forecast_samples": 1500,
-    "esmda_iterations": 16,
+  "esmda_iterations": 16,
   "N" :  {
-      "type": "uniform",
+    "type": "uniform",
     "min": 120000,
     "max": 1200000
-},
+  },
   "sigma" : 0.2 ,
   "gamma" : 0.5,
   "R0" : {
@@ -28,12 +28,12 @@
   "delayHOS" : 5,
   "delayHOSREC" : 14,
   "delayHOSD" : 3,
-   "delayICUCAND": 0,
+  "delayICUCAND": 0,
   "delayICUD": 3,
   "delayICUREC": 23,
   "hosfrac" : 0.05,
   "dfrac" : 0.22,
-   "calibration_mode": "dead",
+  "calibration_mode": "dead",
   "observation_error": 50,
   "YMAX": 10e6,
   "XMAX": 60,
@@ -44,8 +44,8 @@
     "legendfont" : "x-small",
     "y_axis_log": true,
     "hindcast_plume":  true,
-        "xmaxalpha": 31,
-     "casename": "Lombardy"
+    "xmaxalpha": 31,
+    "casename": "Lombardy"
   },
   "hist_time_steps": [40,50],
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95]
