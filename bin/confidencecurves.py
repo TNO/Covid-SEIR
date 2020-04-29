@@ -32,15 +32,17 @@ O_ICUCUM = 8
 O_REC = 9
 O_DEAD = 10
 O_CUMINF = 11
+O_ALPHARUN =12
 
 S_HOS = 'hospitalized'
 S_ICU = 'ICU'
 S_HOSCUM = 'hospitalizedcum'
 S_DEAD = 'dead'
 S_INF = 'infected'
+S_ALPHARUN = 'alpharun'
 
 
-def plot_confidence_alpha(configpath, config, inputdata, firstdate):
+def plot_confidence_alpha_obsolete(configpath, config, inputdata, firstdate):
 
     base = (os.path.split(configpath)[-1]).split('.')[0]
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
@@ -126,24 +128,22 @@ def plot_confidence_alpha(configpath, config, inputdata, firstdate):
         plt.savefig(outputpath, dpi=300)
 
 
-def plot_confidence(configpath, config, inputdata, firstdate):
+def plot_confidence(outpath, config, inputdata, firstdate):
 
-    base = (os.path.split(configpath)[-1]).split('.')[0]
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
-    calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD, S_INF]
-    o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD, O_CUMINF]
+    calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD, S_INF, S_ALPHARUN]
+    o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD, O_CUMINF, O_ALPHARUN]
 
-    titles = ['Hospitalized', 'ICU', 'Hospitalized Cum.', 'Mortalities', 'Infected']
-    #['lightcoral', 'brown']
-    #['mistyrose', 'lightcoral'],
-    symcolors = [['powderblue','steelblue' ],['peachpuff', 'sandybrown'], ['lightgreen','forestgreen' ], ['silver', 'grey'], ['mistyrose', 'lightcoral']]
-    y_obs_s = [inputdata[:, I_HOS], inputdata[:, I_ICU], inputdata[:, I_HOSCUM], inputdata[:, I_DEAD], inputdata[:,I_INF]]
+    titles = ['Hospitalized', 'ICU', 'Hospitalized Cum.', 'Mortalities', 'Infected','1-$\\alpha$']
+    y_label = ['Number of cases', 'Number of cases', 'Number of cases', 'Number of cases', 'Number of cases',
+               '1-$\\alpha$']
+    symcolors = [['powderblue','steelblue' ],['peachpuff', 'sandybrown'], ['lightgreen','forestgreen' ], ['silver', 'grey'], ['mistyrose', 'lightcoral'], ['plum', 'mediumorchid']]
+    y_obs_s = [inputdata[:, I_HOS], inputdata[:, I_ICU], inputdata[:, I_HOSCUM], inputdata[:, I_DEAD], inputdata[:,I_INF], []]
     y_maxdef = config['YMAX']
     y_maxhos = y_maxdef * get_mean(config['hosfrac'])
     y_maxicu = y_maxhos * get_mean(config['ICufrac'])
     y_maxdead = y_maxhos * get_mean(config['dfrac']) * 4
     y_maxinf = y_maxdef*5
-    y_max = [y_maxhos, y_maxicu, y_maxhos*4, y_maxdead, y_maxinf]
+    y_max = [y_maxhos*1.5, y_maxicu, y_maxhos*4, y_maxdead, y_maxinf, 1]
 
     casename = ''
     try:
@@ -171,7 +171,7 @@ def plot_confidence(configpath, config, inputdata, firstdate):
         symcolor = symcolors[i]
         y_obs = y_obs_s[i]
         ymax = y_max[i]
-
+        ylabel = y_label[i]
         if (daily):
             if ((i==2) or (i==3) or (i==4)):
                 y_obs = np.concatenate((np.array([0]), np.diff(y_obs)))
@@ -199,8 +199,7 @@ def plot_confidence(configpath, config, inputdata, firstdate):
             assert len(figure_size) == 2
             plt.figure(figsize=figure_size)
         except:
-            pass
-        # plt.figure()
+            plt.figure()
         date_1 = datetime.datetime.strptime(firstdate, "%m/%d/%y")
         t = [date_1 + datetime.timedelta(days=a - 1) for a in time]
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
@@ -217,7 +216,7 @@ def plot_confidence(configpath, config, inputdata, firstdate):
             c = symcolor[iconf]
             plt.fill_between(t, modeldata[conf_level[iconf]], modeldata[conf_level[-1-iconf]],
                              label='{}% confidence interval'.format(conf_range), color=c)
-        if y_obs.any():
+        if np.size(y_obs) > 0:
             x_days = [date_1 + datetime.timedelta(days=a - 1) for a in x_obs]
             plt.scatter(x_days, y_obs, c='k', label='data', marker='o', s=8)
 
@@ -233,23 +232,31 @@ def plot_confidence(configpath, config, inputdata, firstdate):
 
         plt.legend(loc=legendloc)
         plt.xlabel('Date')
-        plt.ylabel('Number of cases')
+        plt.ylabel(ylabel)
         title = title + ' ' + casename
         plt.title(title)
-        # plt.yscale('log')
+        if (config['plot']['y_axis_log']):
+            plt.yscale('log')
+            if (ymax > 0):
+                plt.ylim(1, ymax)
+        else:
+            plt.yscale('linear')
+            plt.ylim(0, ymax)
         # plt.savefig('Hospital_cases_log.png', dpi=300)
-        plt.yscale('linear')
+
         #plt.xlim([t[0], t[-1]])
         plt.xlim([t[0], t[xmax]])
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
         day_interval = calc_axis_interval((t[xmax] - t[0]).days)
         plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
         plt.gcf().autofmt_xdate()
-        plt.ylim(0, ymax)
+
+
+
         outputpath = '{}_posterior_prob_{}_calibrated_on_{}.png'.format(outpath, calmode, config['calibration_mode'])
         plt.savefig(outputpath, dpi=300)
 
-        if y_obs.any():
+        if np.size(y_obs) > 0:
             # Have to make a new plot to change the size
             plt.figure(figsize=plt.rcParams["figure.figsize"])
 
@@ -268,7 +275,6 @@ def plot_confidence(configpath, config, inputdata, firstdate):
             plt.grid(True)
             plt.xlabel('Date')
             plt.ylabel('Number of cases')
-            title = title + ' ' + casename
             plt.title(title)
             plt.yscale('linear')
 
@@ -278,6 +284,7 @@ def plot_confidence(configpath, config, inputdata, firstdate):
             except:
                 print('No legendloczoom plot zoom parameters, taking', legendloc)
                 pass
+            plt.yscale('linear')
             plt.legend(loc=legendloc)
             inow = np.size(y_obs)
             i1 = inow-15
@@ -305,8 +312,11 @@ def main(configpath):
     else:
         data = generate_zero_columns(data, config)
 
-    plot_confidence(configpath, config, data, config['startdate'])
-    plot_confidence_alpha(configpath, config, data, config['startdate'])
+    base = (os.path.split(configpath)[-1]).split('.')[0]
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+
+    plot_confidence(outpath, config, data, config['startdate'])
+    #plot_confidence_alpha_obsolete(configpath, config, data, config['startdate'])
 
 
 if __name__ == '__main__':

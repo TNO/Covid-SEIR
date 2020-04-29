@@ -1,7 +1,6 @@
 from datetime import datetime
 import os.path
 import time
-from res import fetch_data
 import numpy as np
 import pandas as pd
 import urllib.request as urllib
@@ -33,7 +32,7 @@ def fetch(base, csv_file):
         print("read bytes from %s: %i" % (URL, len(r)))
 
         if len(r) < 1000:
-            raise Exception("fetch_data.py read less than 1000 bytes")
+            raise Exception("global_data.py read less than 1000 bytes")
 
         with open(FILENAME, 'wb') as f:
             f.write(r)

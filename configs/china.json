@@ -4,13 +4,13 @@
   "province": "all",
   "startdate": "1/22/20",
   "maxrecords": 60,
-  "t_max" : 90,
+  "t_max" : 120,
   "dt" : 0.1,
   "time_delay": 17,
   "population": 16e6,
-  "nr_prior_samples": 400,
+  "nr_prior_samples": 40,
   "nr_forecast_samples": 500,
-  "esmda_iterations": 16,
+  "esmda_iterations": 4,
   "N" : {
     "type": "uniform",
     "min":  25000,
@@ -37,8 +37,8 @@
   "dfrac" : 0.22,
   "icudfrac" : 0.5,
   "calibration_mode": "dead",
-  "observation_error": 200,
-  "YMAX": 1e6,
+  "observation_error": 400,
+  "YMAX": 1e5,
   "XMAX": 60,
   "ICufrac": 0.0,
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
@@ -46,9 +46,10 @@
     "legendloc" : "best",
     "legendfont" : "x-small",
     "y_axis_log": true,
-    "hindcast_plume": false,
-    "xmaxalpha": 31,
-    "casename": "China"
+    "hindcast_plume": true,
+    "x,maxalpha": 31,
+    "casename": "China",
+    "daily":  false
   },
   "hist_time_steps": [30,35,40,50,60]
 

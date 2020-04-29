@@ -54,7 +54,7 @@ class InversionMethods:
         t_obs = kwargs['t_obs']
 
         # loop over the MDA iterations
-        for iI in range(nI):
+        for iI in range(nI+1):
 
             # Run the model for every ensemble member and store predictions fw and simulated data GM
             GMiI = []

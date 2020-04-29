@@ -49,6 +49,8 @@ OP_ICU = 2
 OP_ICUCUM = 3
 OP_REC = 4
 OP_DEAD = 5
+OP_ICUREC = 6
+OP_ICUDEAD = 7
 
 
 def gauss_smooth_shift(input,  shift, stddev, scale=1.0):
@@ -123,6 +125,8 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
     icuday = hosday * icufrac
     icucum = np.cumsum(icuday)
 
+
+
     stddev_norm = 0
     scale_norm =1
     icucum = gauss_smooth_shift(icucum, delay_icu, icu_sd, scale_norm)
@@ -141,7 +145,7 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
 
     r = removed
     if not isinstance(r, np.ndarray):
-        r=  gauss_smooth_shift(hoscum, -delay_hos, 0, scale=1.0/(1 - hosfrac))
+        r=  gauss_smooth_shift(hoscum, -delay_hos, 0, scale=1.0/(hosfrac))
 
     recmild = gauss_smooth_shift(r, delay_rec, rec_sd, (1-hosfrac))
 
@@ -153,8 +157,10 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
     icucum = icucum[:,None]
     hoscum = hoscum[:, None]
     dead = dead[:, None]
+    icurec = icu_rechos[:,None]
+    icudead = icu_dead[:, None]
 
-    resout= np.concatenate((hos,hoscum,icu,icucum,rec,dead), axis=-1)
+    resout= np.concatenate((hos,hoscum,icu,icucum,rec,dead, icurec, icudead), axis=-1)
     return resout
 
 
@@ -234,6 +240,11 @@ def generate_hos_actual(data, config):
     dataprocess = do_hospitalization_process(hoscum, delays, fracs)
     hos = dataprocess[:,OP_HOS]
     hos = hos[:, None]
+    icucum = dataprocess[:,OP_ICUCUM]
+   # print ('day icufrac icucum')
+   # for i, ic in enumerate(icucum):
+   #     if (i<t_max):
+   #         print (time[i], icufrac[i], ic)
     datanew = np.concatenate((data[:,0:6], hos), axis=-1)
     return datanew
 
@@ -241,6 +252,8 @@ def generate_hos_actual(data, config):
 def calc_axis_interval(num_days):
     if num_days < 70:
         interval = 7
-    else:
+    elif num_days<360:
         interval = 14
+    else:
+        interval = 28
     return interval

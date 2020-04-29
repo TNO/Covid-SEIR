@@ -39,7 +39,7 @@ O_DEAD = 10
 O_CUMINF = 11
 
 
-def run_prior(config):
+def run_prior(config, ndata):
     """
     Create a prior ensemble of model runs.
     :param config: The entire model configuration in dict-form
@@ -47,11 +47,11 @@ def run_prior(config):
     """
     np.random.seed(1)
     # Parse parameters
-    m_prior, fwd_args = parse_config(config)
+    m_prior, fwd_args = parse_config(config, ndata)
     m_prior = reshape_prior(m_prior)
 
     # Run simulation
-    results = np.zeros((len(m_prior), 12, len(fwd_args['time'])))
+    results = np.zeros((len(m_prior), 13, len(fwd_args['time'])))
     for i in tqdm(range(len(m_prior)), desc='Running prior ensemble'):
         param = m_prior[i]
         results[i] = coronaSEIR.base_seir_model(param,fwd_args)
@@ -118,7 +118,7 @@ def rerun_model_with_alpha_uncertainty(model_conf, p, config,fwd_args):
             post[:,i] = model_conf[alpha_sample_indices,i]
 
     # Run simulation
-    results = np.zeros((post.shape[0], 12, len(fwd_args['time'])))
+    results = np.zeros((post.shape[0], 13, len(fwd_args['time'])))
     for i in tqdm(range(post.shape[0]), desc='Running posterior ensemble'):
         param = post[i]
         results[i] = coronaSEIR.base_seir_model(param, fwd_args)
@@ -239,7 +239,8 @@ def main(configpath):
         data = generate_zero_columns(data, config)
     # Run the forward model to obtain a prior ensemble of models
     save_input_data (configpath, data)
-    prior, time, prior_param, fwd_args = run_prior(config)
+    ndata = np.size(data[:, 0])
+    prior, time, prior_param, fwd_args = run_prior(config,ndata)
 
     # Calibrate the model (as calibration data, we either use 'hospitalized' or 'dead')
     calibration_mode = get_calibration_modes(config['calibration_mode'])[0]

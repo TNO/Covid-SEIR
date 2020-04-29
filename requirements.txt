@@ -6,3 +6,6 @@ seaborn
 emcee
 corner
 h5py
+selenium
+requests
+lxml

@@ -27,7 +27,7 @@ def save_input_data(configpath,  datanew):
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
     header = 'day,test,dead,rec,hoscum,icu,hosact'
     table =  datanew[:,0:7] #np.concatenate((datanew[:, 0:6]), axis=-1)
-    np.savetxt('{}_inputdata{}.txt'.format(outpath, '', ''),
+    np.savetxt('{}_inputdata{}.txt'.format(outpath, '',''),
                table, header=header, delimiter=',',comments='',fmt='%8d')
 
 
@@ -73,6 +73,7 @@ def load_data(config):
 def  read_icufrac_data(config, time, time_delay):
     icufracfile = 'None'
     icufrac= 'None'
+    time_delay = time_delay
     if 'icufracfile' in config:
         icufracfile = config['icufracfile']
         direc = '.'
@@ -92,8 +93,8 @@ def  read_icufrac_data(config, time, time_delay):
                 icufrac[i] = icufrac[i-1]
          # delay the icufrac
         icufrac = np.roll(icufrac, int(time_delay))
-        # set the first times the icufrac to the first value
-        icufrac[:int(time_delay)] = icudata[0]
+        # set the first times the icufrac to 0
+        icufrac[:int(time_delay)] = 0
     else:
         icufrac = config['ICufrac']
 
