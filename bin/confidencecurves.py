@@ -158,6 +158,12 @@ def plot_confidence(outpath, config, inputdata, firstdate):
     except:
         print('No daily in plot parameters, assuming cumulative display of mortalities and hospitalized cum. Infected, ICU and hospitalized plotted as actual')
         pass
+    nolegend = False
+    try:
+        nolegend = config['plot']['nolegend']
+    except:
+        print('No daily in plot parameters, assuming cumulative display of mortalities and hospitalized cum. Infected, ICU and hospitalized plotted as actual')
+        pass
 
     x_obs = inputdata[:, 0]
     xmax = config['XMAX']
@@ -220,6 +226,28 @@ def plot_confidence(outpath, config, inputdata, firstdate):
             x_days = [date_1 + datetime.timedelta(days=a - 1) for a in x_obs]
             plt.scatter(x_days, y_obs, c='k', label='data', marker='o', s=8)
 
+        plot_hammer = False
+        try:
+            plot_hammer = config['plot']['hammer']
+        except:
+            pass
+
+        if (plot_hammer and (i==1)):
+             # consider to plot the analyse_hammer results
+             path = '{}_hammer_diagnostics{}.csv'.format(outpath, '' '')
+             data = np.genfromtxt(path, names=True, delimiter=',')
+             th = data['daymon']
+             hicurate = data['icurate']
+             hicupeak = data['icumax']
+             try:
+                thplot = [date_1 + datetime.timedelta(days=a - 1) for a in th]
+                plt.scatter(thplot, hicupeak, c=hicurate,  marker='o', s=8)
+                if (not nolegend):
+                    cbar = plt.colorbar()
+                    cbar.set_label("daily ICU", labelpad=+1)
+             except:
+                 print('no hammer entries in ', path)
+                 pass
         plt.grid(True)
 
         legendloc = 'upper left'
@@ -229,12 +257,13 @@ def plot_confidence(outpath, config, inputdata, firstdate):
             print('No legendloc plot parameters, taking', legendloc)
             pass
 
-
-        plt.legend(loc=legendloc)
+        if (not nolegend):
+            plt.legend(loc=legendloc)
         plt.xlabel('Date')
-        plt.ylabel(ylabel)
+        plt.ylabel(ylabel, fontsize=12)
         title = title + ' ' + casename
-        plt.title(title)
+        if (not nolegend):
+            plt.title(title)
         if (config['plot']['y_axis_log']):
             plt.yscale('log')
             if (ymax > 0):

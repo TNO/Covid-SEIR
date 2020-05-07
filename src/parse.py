@@ -43,17 +43,22 @@ def parse_config(config, ndata, mode='prior'):
     dfrac = to_distr(config['dfrac'], nr_samples)
 
     # add standard dev for gaussian smoothing
-    rec_sd = to_gauss_smooth_dist(config['delayREC'], nr_samples);
-    hos_sd = to_gauss_smooth_dist(config['delayHOS'], nr_samples);
-    hosrec_sd = to_gauss_smooth_dist(config['delayHOSREC'], nr_samples);
-    hosd_sd = to_gauss_smooth_dist(config['delayHOSD'], nr_samples);
+    rec_sd = to_gauss_smooth_dist(config['delayREC'], nr_samples)
+    hos_sd = to_gauss_smooth_dist(config['delayHOS'], nr_samples)
+    hosrec_sd = to_gauss_smooth_dist(config['delayHOSREC'], nr_samples)
+    hosd_sd = to_gauss_smooth_dist(config['delayHOSD'], nr_samples)
 
-    icu_sd = to_gauss_smooth_dist(config['delayICUCAND'], nr_samples);
-    icud_sd = to_gauss_smooth_dist(config['delayICUD'], nr_samples);
-    icurec_sd = to_gauss_smooth_dist(config['delayICUREC'], nr_samples);
+    icu_sd = to_gauss_smooth_dist(config['delayICUCAND'], nr_samples)
+    icud_sd = to_gauss_smooth_dist(config['delayICUD'], nr_samples)
+    icurec_sd = to_gauss_smooth_dist(config['delayICUREC'], nr_samples)
 
-
-
+    r0_scaleseason =-1
+    r0_daymaxseason =-1
+    try:
+        r0_scaleseason = to_distr(config['R0_scaleseason'], nr_samples)
+        r0_daymaxseason = to_distr(config['R0_daymaxseason'], nr_samples)
+    except:
+        pass
     icudfrac = to_distr(config['icudfrac'], nr_samples)
     m = to_distr(config['m'], nr_samples)
     time = np.linspace(0, t_max, int(t_max) + 1)
@@ -91,20 +96,22 @@ def parse_config(config, ndata, mode='prior'):
         return_dict['locked']['icufrac'] = icufrac
         params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
                   delay_icurec, hosfrac, dfrac, icudfrac, m, population,
-                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd, icufracscale]
+                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd, icufracscale,
+                  r0_scaleseason, r0_daymaxseason ]
         names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
                  'delay_icu', 'delay_icud', 'delay_icurec', 'hosfrac', 'dfrac', 'icudfrac', 'm',
                  'population',
-                 'icurec_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd', 'icufracscale']
+                 'icurec_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd', 'icufracscale',
+                 'r0_scaleseason', 'r0_daymaxseason']
     else:
         params = [n, r0, sigma, gamma, alpha_n, delay_hos, delay_rec, delay_hosrec, delay_hosd, delay_icu, delay_icud,
                   delay_icurec, hosfrac,icufrac,dfrac,icudfrac, m, population,
-                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd, icufracscale
-                  ]
+                  icurec_sd, icud_sd, icu_sd, rec_sd, hos_sd, hosrec_sd, hosd_sd, icufracscale,
+                  r0_scaleseason, r0_daymaxseason ]
         names = ['n', 'r0', 'sigma', 'gamma', 'alpha', 'delay_hos', 'delay_rec', 'delay_hosrec', 'delay_hosd',
                  'delay_icu','delay_icud','delay_icurec','hosfrac','icufrac', 'dfrac','icudfrac', 'm', 'population',
-                 'icurec_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd', 'icufracscale'
-                    ]
+                 'icurec_sd', 'icud_sd','icu_sd','rec_sd', 'hos_sd', 'hosrec_sd', 'hosd_sd', 'icufracscale',
+                 'r0_scaleseason', 'r0_daymaxseason']
 
     return_dict['locked']['dayalpha'] = dayalpha
     return_dict['locked']['ndataend'] = ndata + time_delay

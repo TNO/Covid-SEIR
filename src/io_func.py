@@ -22,14 +22,13 @@ def load_config(configpath):
         pass
     return config
 
-def save_input_data(configpath,  datanew):
-    base = (os.path.split(configpath)[-1]).split('.')[0]
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
-    header = 'day,test,dead,rec,hoscum,icu,hosact'
-    table =  datanew[:,0:7] #np.concatenate((datanew[:, 0:6]), axis=-1)
-    np.savetxt('{}_inputdata{}.txt'.format(outpath, '',''),
-               table, header=header, delimiter=',',comments='',fmt='%8d')
 
+def save_input_data(base_filename,  datanew):
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base_filename)
+    header = 'day,test,dead,rec,hoscum,icu,hosact'
+    table = datanew[:, 0:7]  # np.concatenate((datanew[:, 0:6]), axis=-1)
+    np.savetxt('{}_inputdata{}.txt'.format(outpath, '', ''),
+               table, header=header, delimiter=',', comments='', fmt='%8d')
 
 
 def load_data(config):
@@ -70,16 +69,16 @@ def load_data(config):
     return data
 
 
-def  read_icufrac_data(config, time, time_delay):
+def read_icufrac_data(config, time, time_delay):
     icufracfile = 'None'
-    icufrac= 'None'
+    icufrac = 'None'
     time_delay = time_delay
     if 'icufracfile' in config:
         icufracfile = config['icufracfile']
         direc = '.'
         # read icufracs from a datafile, these are
-        data =np.genfromtxt(os.path.join(direc, icufracfile), names=True)
-        #data = np.loadtxt(os.path.join(direc, icufracfile), names=True, delimiter=' ')
+        data = np.genfromtxt(os.path.join(direc, icufracfile), names=True)
+        # data = np.loadtxt(os.path.join(direc, icufracfile), names=True, delimiter=' ')
         icudata = data['icufrac']
         if 'maxrecords' in config:
             n = config['maxrecords']
@@ -87,11 +86,11 @@ def  read_icufrac_data(config, time, time_delay):
         # map the data to array equal to length of time
         icufrac = np.ones_like(time)
         for i, num in enumerate(icufrac):
-            if (i<np.size(icudata)):
+            if i < np.size(icudata):
                 icufrac[i] = icudata[i]
             else:
                 icufrac[i] = icufrac[i-1]
-         # delay the icufrac
+        # delay the icufrac
         icufrac = np.roll(icufrac, int(time_delay))
         # set the first times the icufrac to 0
         icufrac[:int(time_delay)] = 0
@@ -99,7 +98,6 @@ def  read_icufrac_data(config, time, time_delay):
         icufrac = config['ICufrac']
 
     return icufrac
-
 
 
 def save_results(results, fwd_args, config, outpath, data, mode):
@@ -116,7 +114,8 @@ def save_results(results, fwd_args, config, outpath, data, mode):
         # Data
         datag = hf.create_group('data')
         datag['data'] = data
-        string_array_to_h5(datag, 'labels',['time', 'infected', 'dead', 'recovered', 'hospitalizedcum', 'icu','hospitalized'])
+        string_array_to_h5(datag, 'labels', ['time', 'infected', 'dead', 'recovered',
+                                             'hospitalizedcum', 'icu', 'hospitalized'])
 
         if mode == 'esmda':
             # Parameters
@@ -132,7 +131,8 @@ def save_results(results, fwd_args, config, outpath, data, mode):
             model = hf.create_group('model')
             prior = np.array(results['fw'][0])
             posterior = np.array(results['fw'][-1])
-            # Time, Suscep, Expos, Infec, Removed, Hospitalized, Hos (cummulative), ICU, ICU (cummulative), Recovered, Dead
+            # Time, Suscep, Expos, Infec, Removed, Hospitalized, Hos (cummulative),
+            # ICU, ICU (cummulative), Recovered, Dead
             names = ['time', 'susceptible', 'exposed', 'infected', 'removed', 'hospitalized', 'hospitalized_cum', 'icu',
                      'icu_cum', 'recovered', 'dead']
             labelled_array_to_h5(model, 'prior', prior, ['members', 'forecasted_numbers'],
@@ -146,19 +146,19 @@ def save_results(results, fwd_args, config, outpath, data, mode):
         else:
             raise NotImplementedError
 
+
 def add_hammer_to_results(hresults, outpath, mode):
 
     with h5py.File(outpath, 'r+') as hf:
         # Config
         if mode == 'esmda':
             model = hf['model']
-            model['hammered_posterior']=hresults
+            model['hammered_posterior'] = hresults
         elif mode == 'mcmc':
             pass
 
         else:
             raise NotImplementedError
-
 
 
 def dict_to_h5(base, dictionary):
@@ -169,6 +169,7 @@ def dict_to_h5(base, dictionary):
         else:
             new_base = base.create_group(key)
             dict_to_h5(new_base, dictionary[key])
+
 
 def dict_from_h5(hf):
     ret_dict = {}

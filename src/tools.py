@@ -1,8 +1,11 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
+import scipy.special as sps
 
 from src.io_func import read_icufrac_data
 from src.parse import get_mean
+
+
 
 I_TIME = 0
 I_INF = 1
@@ -53,7 +56,7 @@ OP_ICUREC = 6
 OP_ICUDEAD = 7
 
 
-def gauss_smooth_shift(input,  shift, stddev, scale=1.0):
+def gauss_smooth_shift_OLD(input,  shift, stddev, scale=1.0):
     """
     smooths the input with gaussian smooothing with standarddeviation and shifts its delay positions
     :param input: The input array
@@ -78,6 +81,109 @@ def gauss_smooth_shift(input,  shift, stddev, scale=1.0):
     #else:
         # backward roll can simply use the trailing values
     return result
+
+def gaussian( x , s):
+    return 1./np.sqrt( 2. * np.pi * s**2 ) * np.exp( -x**2 / ( 2. * s**2 ) )
+
+
+
+
+def gamma_equivalent( x ,shape,scale ):
+    if (x<0):
+        return 0
+    else:
+        return (x**(shape-1) *(np.exp(-x/scale)/ (sps.gamma(shape)*scale**shape)))
+
+def gamma_smooth_shift_convolve (input,  shift, stddev, scale=1.0):
+    """
+    smooths the input with gaussian smooothing with standarddeviation and shifts its delay positions
+    :param input: The input array
+    :param shift: the amount of indices to shift the result
+    :param the stddev for the gaussian smoothing (in index count)
+    :param scale: scale the input array first with scale
+    :return: the smoothed and shifted array
+    """
+    forcescale = False
+    if isinstance(scale, np.ndarray):
+        forcescale = True
+    if (forcescale or np.abs(scale-1) > 1e-5):
+        input = input*scale
+
+    result = input
+    if (stddev > 0.99) and (shift>0.99):
+        if (shift<stddev):
+            stddev = shift-1
+        isd = 3* max(1,int (stddev))
+        isd = min( int(0.5*np.size(input)-1), isd)
+        theta = stddev**2/shift
+        k = shift/theta
+        ishift = int (shift)
+        mygamma= np.fromiter(( gamma_equivalent(x, k, theta) for x in range (-isd+ishift, isd+ishift+1)), np.float)
+        result = np.convolve(input, mygamma, mode='same')
+
+    if (shift > 0):
+        result = np.roll(result, int(shift))
+        result[: int(shift)] = 0
+    #else:
+        # backward roll can simply use the trailing values
+    return result
+
+def gauss_smooth_shift_convolve(input,  shift, stddev, scale=1.0):
+    """
+    smooths the input with gaussian smooothing with standarddeviation and shifts its delay positions
+    :param input: The input array
+    :param shift: the amount of indices to shift the result
+    :param the stddev for the gaussian smoothing (in index count)
+    :param scale: scale the input array first with scale
+    :return: the smoothed and shifted array
+    """
+    forcescale = False
+    if isinstance(scale, np.ndarray):
+        forcescale = True
+    if (forcescale or np.abs(scale-1) > 1e-5):
+        input = input*scale
+
+    result = input
+    if (stddev > 0.0):
+        isd = max(1,int (stddev))
+        myGaussian = np.fromiter(( gaussian(x,stddev) for x in range (-3*isd,3*isd+1)), np.float)
+        result = np.convolve(input, myGaussian, mode='same')
+
+    result = np.roll(result, int(shift))
+    if (shift > 0):
+        result[: int(shift)] = 0
+    #else:
+        # backward roll can simply use the trailing values
+    return result
+
+
+def gauss_smooth_shift(input,  shift, stddev, scale=1.0):
+    """
+    smooths the input with gaussian smooothing with standarddeviation and shifts its delay positions
+    :param input: The input array
+    :param shift: the amount of indices to shift the result
+    :param the stddev for the gaussian smoothing (in index count)
+    :param scale: scale the input array first with scale
+    :return: the smoothed and shifted array
+    """
+    forcescale = False
+    if isinstance(scale, np.ndarray):
+        forcescale = True
+    if (forcescale or np.abs(scale-1) > 1e-5):
+        input = input*scale
+
+    result = input
+    if (stddev > 0.0):
+        result = gaussian_filter1d(input, stddev,  mode='nearest')
+
+
+    result = np.roll(result, int(shift))
+    if (shift > 0):
+        result[: int(shift)] = 0
+    #else:
+        # backward roll can simply use the trailing values
+    return result
+
 
 
 def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed=None):
@@ -129,7 +235,95 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
 
     stddev_norm = 0
     scale_norm =1
+    icucum = gauss_smooth_shift_convolve(icucum, delay_icu, icu_sd, scale_norm)
+
+   # icudayrec = gauss_smooth_shift_convolve(icuday, delay_icurec, icurec_sd, (1-icudfrac))
+   # icurechos = np.cumsum(icudayrec)
+
+    icu_rechos = gamma_smooth_shift_convolve(icucum, delay_icurec, icurec_sd, (1-icudfrac))
+    icu_recfull = gauss_smooth_shift_convolve(icu_rechos, delay_hosrec, hosrec_sd, scale_norm)
+    icu_dead = gamma_smooth_shift_convolve(icucum, delay_icud, icud_sd, icudfrac)
+
+    rechos = gauss_smooth_shift_convolve(hoscum, delay_hosrec, hosrec_sd, (1-icufrac)*(1-dpfrac))
+    hdead = gauss_smooth_shift_convolve(hoscum, delay_hosd, hosd_sd, (1-icufrac)*dpfrac)
+
+    # actual icu is cumulative icu minus icu dead and icu revovered
+    icu = icucum - icu_dead - icu_rechos
+    dead = hdead + icu_dead
+    hos = hoscum - rechos - icu_recfull - dead  # includes ICU count
+
+    r = removed
+    if not isinstance(r, np.ndarray):
+        r=  gauss_smooth_shift(hoscum, -delay_hos, 0, scale=1.0/(hosfrac))
+
+    recmild = gauss_smooth_shift(r, delay_rec, rec_sd, (1-hosfrac))
+
+    rec = rechos + recmild + icu_recfull
+
+    rec = rec[:, None]
+    hos = hos[:, None]
+    icu = icu[:, None]
+    icucum = icucum[:,None]
+    hoscum = hoscum[:, None]
+    dead = dead[:, None]
+    icurec = icu_rechos[:,None]
+    icudead = icu_dead[:, None]
+
+    resout= np.concatenate((hos,hoscum,icu,icucum,rec,dead, icurec, icudead), axis=-1)
+    return resout
+
+
+def do_hospitalization_process_OLD(hoscum, delays, fracs, gauss_stddev=None, removed=None):
+
+    icudfrac = fracs[IP_ICUDFRAC]
+    dfrac =  fracs[IP_DFRAC]
+    icufrac =fracs[IP_ICUFRAC]
+    hosfrac = fracs[IP_HOSFRAC]
+
+    delay_rec = delays[IP_DELAYREC]
+    delay_hos = delays[IP_DELAYHOS]
+    delay_hosrec =delays[IP_DELAYHOSREC]
+    delay_hosd = delays[IP_DELAYHOSD]
+    delay_icu =delays[IP_DELAYICU]
+    delay_icud = delays[IP_DELAYICUD]
+    delay_icurec =delays[IP_DELAYICUREC]
+
+    gauss_sd = [0,0,0,0,0,0,0]
+    if isinstance(gauss_stddev, list):
+        gauss_sd = gauss_stddev
+
+    rec_sd =  gauss_sd[IP_DELAYREC];
+    hos_sd =  gauss_sd[IP_DELAYHOS]
+    hosrec_sd =gauss_sd[IP_DELAYHOSREC]
+    hosd_sd = gauss_sd[IP_DELAYHOSD]
+    icu_sd =gauss_sd[IP_DELAYICU]
+    icud_sd = gauss_sd[IP_DELAYICUD]
+    icurec_sd =gauss_sd[IP_DELAYICUREC]
+
+    # icufrac is the fraction of patients going to ICU at the time of entry in hospital
+    icufrac2 = icufrac
+    # dp frac is the fraction of all  patients dying who did not go to ICU, referenced at entry in the hospital
+    dpfrac = (dfrac - icufrac * icudfrac) / (1.0001 - icufrac)  # / (1 - icufrac * icudfrac)
+    hosday2 = np.concatenate((np.array([0]), np.diff(hoscum)))
+
+    hosday = hosday2 * 1.0
+
+    if (delay_icu > 0.01):
+        for i, num in enumerate(hosday):
+            irange = int(delay_icu*2)
+            ilow = int(max(0,(i-irange)))
+            mn = np.mean(hosday2[ilow:i+1])
+            hosday[i] = mn
+    # construct hospitalization and icu as if nobody dies in the hospital, except icu
+    icuday = hosday * icufrac
+    icucum = np.cumsum(icuday)
+
+
+
+    stddev_norm = 0
+    scale_norm =1
     icucum = gauss_smooth_shift(icucum, delay_icu, icu_sd, scale_norm)
+
 
     icu_rechos = gauss_smooth_shift(icucum, delay_icurec, icurec_sd, (1-icudfrac))
     icu_recfull = gauss_smooth_shift(icu_rechos, delay_hosrec, hosrec_sd, scale_norm)

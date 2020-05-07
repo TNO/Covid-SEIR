@@ -219,18 +219,17 @@ def plot_results(results, time, configpath, config, data, integrated_result=None
     plt.close()
 
 
-
 def sample_from_prior(prior,p,config):
     nr_samples = config['nr_forecast_samples']
     sample_indices = np.random.choice(np.arange(len(p)), size=nr_samples, p=p)
     return prior[sample_indices]
 
+
 def main(configpath):
     # Load the model configuration file and the data (observed cases)
     config = load_config(configpath)
-    data= load_data(config)
-
-
+    data = load_data(config)
+    base_filename = (os.path.split(configpath)[-1]).split('.')[0]
 
     useworldfile = config['worldfile']
     if (not useworldfile):
@@ -238,7 +237,7 @@ def main(configpath):
     else:
         data = generate_zero_columns(data, config)
     # Run the forward model to obtain a prior ensemble of models
-    save_input_data (configpath, data)
+    save_input_data(base_filename, data)
     ndata = np.size(data[:, 0])
     prior, time, prior_param, fwd_args = run_prior(config,ndata)
 

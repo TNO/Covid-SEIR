@@ -17,12 +17,12 @@ I_ICUREC =2
 I_ICUPRES =3
 I_HOSCUM = 5
 
-S_ICUCUM = 'icu cum'
-S_ICUDEAD = 'icu dead'
-S_ICUREC ='icu recovered IC'
-S_ICUPRES ='icu present'
-S_HOSPREC = 'icu recovered full'
-S_HOSCUM = 'hoscum'
+S_ICUCUM = 'Cumulative ICU'
+S_ICUDEAD = 'Mortalities ICU'
+S_ICUREC ='Recovered ICU'
+S_ICUPRES ='Present ICU'
+S_HOSPREC = 'Recovered ICU'
+S_HOSCUM = 'Cumulative Hospitalized'
 
 IP_DELAYREC = 0
 IP_DELAYHOS = 1
@@ -38,32 +38,38 @@ IP_ICUFRAC = 2
 IP_ICUDFRAC = 3
 
 
-
-def save_input_data(configpath, time, icufrac, tmin, tmax):
+def save_input_data(output_base_filename, time, icufrac, tmin, tmax):
     i1 = int(np.where(time==tmin)[0])
     i2 = int(np.where(time==tmax)[0])
     timeclip = time[i1:i2+1]
     icufracclip = icufrac[i1:i2+1]
 
-    base = (os.path.split(configpath)[-1]).split('.')[0]
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
     header = 'day icufrac'
    # table = datanew[:, 0:7]  # np.concatenate((datanew[:, 0:6]), axis=-1)
-    table =  np.concatenate((timeclip[:,None], icufracclip[:,None]), axis=-1)
+    table = np.concatenate((timeclip[:, None], icufracclip[:, None]), axis=-1)
     np.savetxt('{}_icufrac{}.txt'.format(outpath, ''  ''),
                table, header=header, delimiter=' ', comments='', fmt='%8f')
 
 
-def plot_IC (configpath, icfile):
-    config = load_config(configpath)
-    base = (os.path.split(configpath)[-1]).split('.')[0]
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base)
+def save_and_plot_IC(config, output_base_filename, save_plots):
+    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
 
     firstdate = config['startdate']
 
     direc = '.'
     # read icufracs from a datafile, these are
-    data = np.genfromtxt(os.path.join(direc, icfile), names=True)
+    try:
+        ic_data_file = config['icdatafile']
+    except KeyError:
+        print("No icdatafile in config, using '../res/icdata_main.txt'.")
+        ic_data_file = '../res/icdata_main.txt'
+    data = np.genfromtxt(os.path.join(direc, ic_data_file), names=True)
+
+    # Check if database has RIVM hospitalized data. If NOT, then delete that row
+    if data[-1][-1] == 0:
+        data = data[:-1]
+
     t = data['day']
     tmin = t[0]
     tmax = t[-1]
@@ -73,8 +79,6 @@ def plot_IC (configpath, icfile):
     icupres_obs = data['icupres']
     hosprec_obs = data['hosprec']
     hoscum_obs = data['hoscum']
-
-
 
     delay_hosrec = 0
 
@@ -88,26 +92,24 @@ def plot_IC (configpath, icfile):
     hosfrac = get_mean(config['hosfrac'])
     dfrac = get_mean(config['dfrac'])
 
-    rec_sd = to_gauss_smooth_sd(config['delayREC']);
-    hos_sd = to_gauss_smooth_sd(config['delayHOS']);
-    hosrec_sd = to_gauss_smooth_sd(config['delayHOSREC']);
-    hosd_sd = to_gauss_smooth_sd(config['delayHOSD']);
+    rec_sd = to_gauss_smooth_sd(config['delayREC'])
+    hos_sd = to_gauss_smooth_sd(config['delayHOS'])
+    hosrec_sd = to_gauss_smooth_sd(config['delayHOSREC'])
+    hosd_sd = to_gauss_smooth_sd(config['delayHOSD'])
 
-    icu_sd = to_gauss_smooth_sd(config['delayICUCAND']);
-    icud_sd = to_gauss_smooth_sd(config['delayICUD']);
-    icurec_sd = to_gauss_smooth_sd(config['delayICUREC']);
+    icu_sd = to_gauss_smooth_sd(config['delayICUCAND'])
+    icud_sd = to_gauss_smooth_sd(config['delayICUD'])
+    icurec_sd = to_gauss_smooth_sd(config['delayICUREC'])
 
     icufrac = 0.35
     # icufrac =config['ICufrac']
     icudfrac = get_mean(config['icudfrac'])
 
-
-
     names = [S_ICUCUM, S_ICUDEAD, S_HOSPREC, S_ICUPRES,S_ICUREC,  S_HOSCUM]
     #y_obs = [icucum_obs, icudead_obs, icurec_obs, icupres_obs, hosprec_obs]
     y_obs = [icucum_obs, icudead_obs, hosprec_obs+ icurec_obs, icupres_obs, icurec_obs, hoscum_obs]
-    colors = [ 'maroon', 'black', 'darkgreen','coral','mistyrose', 'lightgreen']
-
+    colors = ['maroon', 'black', 'darkgreen','coral','mistyrose', 'lightgreen']
+    colors = ['royalblue', 'black', 'darkgreen','sandybrown','mistyrose', 'coral']
 
 
 
@@ -133,8 +135,6 @@ def plot_IC (configpath, icfile):
         if (i == I_HOSCUM):
             other = other + hosgrowth
         y_obs[i] = np.concatenate((y, other), axis=-1)
-
-
 
     icucum_obs = y_obs[0]
     icudead_obs = y_obs[1]
@@ -199,121 +199,117 @@ def plot_IC (configpath, icfile):
         hosday = np.clip(hosday,1,max(hosday))
         icuday2 = np.concatenate((np.array([0]), np.diff(icucum)))
         icuday = icuday2*1.0
-
         icuday = gauss_smooth_shift(icuday, 0, gausssmooth_icu)
-
         icufrac = icuday/hosday
         icufrac= np.clip(icufrac,0,1)
 
+        save_input_data(output_base_filename, t, icufrac, tmin, tmax)
 
+        if save_plots:
+            fracs = [hosfrac, dfrac, icufrac, icudfrac]
+            delays = [delay_rec, delay_hos, delay_hosrec, delay_hosd, delay_icu, delay_icud, delay_icurec]
+            gauss_sd = [rec_sd, hos_sd, hosrec_sd, hosd_sd, icu_sd, icud_sd, icurec_sd]
+            #gauss_sd = [0, 0, 0, 0, 0, icud_sd, icurec_sd]
 
+            r= gauss_smooth_shift(hoscum_pred, -delay_hos, hos_sd, scale=1.0/hosfrac)
+            dataprocess = do_hospitalization_process(hoscum_pred, delays, fracs, gauss_stddev=gauss_sd, removed=r)
 
-        save_input_data(configpath, t, icufrac, tmin, tmax)
+            rec = dataprocess[:, OP_REC, None]
+            hos = dataprocess[:, OP_HOS, None]
+            icu = dataprocess[:, OP_ICU, None]
+            icucum = dataprocess[:, OP_ICUCUM, None]
+            icu_dead = dataprocess[:, OP_ICUDEAD, None]
+            icu_recfull = dataprocess[:,OP_ICUREC, None]
 
+            fig, ax = plt.subplots()
+            plt.figure(figsize=(6.0, 6.0))
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+            day_interval = calc_axis_interval((tplot[nstart] - tplot[-nend]).days)
+            plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+            plt.gcf().autofmt_xdate()
 
-        fracs = [hosfrac, dfrac, icufrac, icudfrac]
-        delays = [delay_rec, delay_hos, delay_hosrec, delay_hosd, delay_icu, delay_icud, delay_icurec]
-        gauss_sd = [rec_sd, hos_sd, hosrec_sd, hosd_sd, icu_sd, icud_sd, icurec_sd]
-        #gauss_sd = [0, 0, 0, 0, 0, icud_sd, icurec_sd]
+            plt.legend(loc='upper left')
+            plt.xlabel('Date',fontsize=12)
+            plt.ylabel('number of cases',fontsize=12)
+            width = 0.4
+            p1 = plt.bar(tplot, icuday, width)
+            p2 = plt.bar(tplot, (hosday-icuday), width, bottom=icuday)
+            outputpath = '{}_{}_{}.png'.format(outpath, 'ICanalysis', 'hosICU')
+            #plt.title('daily hospitalization and ICU')
+            plt.legend((p1[0], p2[0]), ('Daily ICU', 'Daily Hospitalized'))
+            plt.xlim([date_1, tplot[-nend]])
+           # plt.xlim(tmin, tmax)
+            plt.grid(True)
+            plt.savefig(outputpath, dpi=300)
 
-        r= gauss_smooth_shift(hoscum_pred, -delay_hos, hos_sd, scale=1.0/hosfrac)
-        dataprocess = do_hospitalization_process(hoscum_pred, delays, fracs, gauss_stddev=gauss_sd, removed=r)
+            fig, ax = plt.subplots()
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+            day_interval = calc_axis_interval((tplot[nstart] - tplot[-nend]).days)
+            plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+            plt.gcf().autofmt_xdate()
+            plt.xlabel('Date')
+            plt.title('daily intake ICU')
+            plt.ylabel('fraction of daily hospitalization')
+            width = 0.4
+            rel = np.clip(icuday/hosday,0,1)
+            one = rel*0.0 +1.0
+            p1 = plt.bar(tplot, rel, width)
+            #p2 = plt.bar(t, (one-rel), width, bottom=rel)
+            outputpath = '{}_{}_{}.png'.format(outpath, 'ICanalysis', 'hosICU%')
+            plt.xlim([date_1, tplot[-nend]])
+            plt.grid(True)
 
-        rec = dataprocess[:, OP_REC, None]
-        hos = dataprocess[:, OP_HOS, None]
-        icu = dataprocess[:, OP_ICU, None]
-        icucum = dataprocess[:, OP_ICUCUM, None]
-        icu_dead = dataprocess[:, OP_ICUDEAD, None]
-        icu_recfull = dataprocess[:,OP_ICUREC, None]
+            plt.savefig(outputpath, dpi=300)
+            # plt.show()
+
+    if save_plots:
+        y_pred = [icucum, icu_dead, icu_recfull, icu, icu_recfull, hoscum_pred ]
 
         fig, ax = plt.subplots()
-
+        plt.figure(figsize=(6.0, 6.0))
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
         day_interval = calc_axis_interval((tplot[nstart] - tplot[-nend]).days)
         plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
         plt.gcf().autofmt_xdate()
+
+        for i, name in enumerate(names):
+            name2 = name + ' - data'
+            if (i!=4):
+                #plt.scatter(tplot, y_obs[i], c=colors[i], label=name2, marker='o', s=8)
+                plt.scatter(tplot, y_obs[i], c=colors[i], label=name, marker='o', s=8)
+            name2 = name + ' - model'
+            if (i!=4):
+                #plt.plot(tplot, y_pred[i],  c=colors[i], label=name2,  lw=2)
+                plt.plot(tplot, y_pred[i], c=colors[i],  lw=2)
+        #plt.scatter(t, exp_pres, c='b', label='icu pres (expected)', marker='o', s=8)
 
         plt.legend(loc='upper left')
-        plt.xlabel('Date')
-        plt.ylabel('number of daily cases')
-        width = 0.4
-        p1 = plt.bar(tplot, icuday, width)
-        p2 = plt.bar(tplot, (hosday-icuday), width, bottom=icuday)
-        outputpath = '{}_{}_{}.png'.format(outpath, 'ICanalysis', 'hosICU')
-        plt.title('daily hospitalization and ICU')
-        plt.legend((p1[0], p2[0]), ('ICU', 'hospitalized'))
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('number of cases', fontsize=12)
+        title = 'ICU analysis'
+        #plt.title(title)
+        # plt.yscale('log')
+        # plt.savefig('Hospital_cases_log.png', dpi=300)
+        plt.yscale('linear')
         plt.xlim([date_1, tplot[-nend]])
-       # plt.xlim(tmin, tmax)
-        plt.grid(True)
-        plt.savefig(outputpath, dpi=300)
-
-        fig, ax = plt.subplots()
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
-        day_interval = calc_axis_interval((tplot[nstart] - tplot[-nend]).days)
-        plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
-        plt.gcf().autofmt_xdate()
-        plt.xlabel('Date')
-        plt.title('daily intake ICU')
-        plt.ylabel('fraction of daily hospitalization')
-        width = 0.4
-        rel =  np.clip(icuday/hosday,0,1)
-        one = rel*0.0 +1.0
-        p1 = plt.bar(tplot, rel, width)
-        #p2 = plt.bar(t, (one-rel), width, bottom=rel)
-        outputpath = '{}_{}_{}.png'.format(outpath, 'ICanalysis', 'hosICU%')
-        plt.xlim([date_1, tplot[-nend]])
+        plt.ylim(0, 3000)
         plt.grid(True)
 
+        #plt.show()
+
+        outputpath = '{}_{}_{}.png'.format(outpath,  'ICanalysis', 'data')
         plt.savefig(outputpath, dpi=300)
-        # plt.show()
 
 
-    y_pred = [icucum, icu_dead, icu_recfull, icu, icu_recfull, hoscum_pred ]
-
-    fig, ax = plt.subplots()
-    plt.figure(figsize=(8.0, 8.0))
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
-    day_interval = calc_axis_interval((tplot[nstart] - tplot[-nend]).days)
-    plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
-    plt.gcf().autofmt_xdate()
-
-    for i, name in enumerate(names):
-        name2 = name + ' - data'
-        if (i!=4):
-            plt.scatter(tplot, y_obs[i], c=colors[i], label=name2, marker='o', s=8)
-        name2 = name + ' - model'
-        if (i!=4):
-            plt.plot(tplot, y_pred[i],  c=colors[i], label=name2,  lw=2)
-    #plt.scatter(t, exp_pres, c='b', label='icu pres (expected)', marker='o', s=8)
-
-    plt.legend(loc='upper left')
-    plt.xlabel('Date')
-    plt.ylabel('number of cases')
-    title = 'ICU analysis'
-    plt.title(title)
-    # plt.yscale('log')
-    # plt.savefig('Hospital_cases_log.png', dpi=300)
-    plt.yscale('linear')
-    plt.xlim([date_1, tplot[-nend]])
-    plt.ylim(0, 3000)
-    plt.grid(True)
-
-    #plt.show()
-
-    outputpath = '{}_{}_{}.png'.format(outpath,  'ICanalysis', 'data')
-    plt.savefig(outputpath, dpi=300)
-
-
-
-
-
-
-def main(configpath, icfile):
+def main(configpath, save_plots=True):
     # Load the model configuration file and the data (observed cases)
-     plot_IC(configpath, icfile)
+    config = load_config(configpath)
+    output_base_filename = (os.path.split(configpath)[-1]).split('.')[0]
+    save_and_plot_IC(config, output_base_filename, save_plots)
 
 
 if __name__ == '__main__':
-    # This script accepts two input argument:
+    # This script accepts two input arguments:
     # 1) The path to the datafile to be postprocessed
-    main(sys.argv[1], sys.argv[2])
+    # 2) If you want to save the plots (defaults to True)
+    main(sys.argv[1])
