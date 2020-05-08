@@ -88,23 +88,10 @@
     "mean": 1,
     "stddev": 0.1
   },
-  "calibration_mode": [4,5 ],
+  "calibration_mode": [4, 5],
   "observation_error": [100.0, 50.0],
-  "YMAX": 150e3,
-  "XMAX": 240,
-  "hist_time_steps": [30,35,40,60],
+  "hist_time_steps": [30, 35, 40, 60],
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
-  "plot" : {
-    "legendloc" : "best",
-    "legendloczoom" : "lower left",
-    "legendfont" : "x-small",
-    "y_axis_log": false,
-    "hindcast_plume": true,
-    "xmaxalpha": 240,
-    "casename": "Netherlands",
-    "daily":  false,
-    "figure_size": [10.0,4.0]
-  },
   "single_run": false,
   "output_base_filename": "netherlands_dashboard"
 }

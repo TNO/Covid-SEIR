@@ -26,8 +26,8 @@ def run_dashboard_wrapper(config_input):
         # Run the single run model
         single_run_results = single_run_mean(config, data)
 
-        # Rearrange the output data starting from day 0
-        [start_index] = np.where(single_run_results[0] == 0)[0]
+        # Rearrange the output data starting from day 1
+        [start_index] = np.where(single_run_results[0] == 1)[0]
         dashboard_data = {
             'susceptible':      np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[1][start_index:, None]), axis=1),
@@ -39,9 +39,9 @@ def run_dashboard_wrapper(config_input):
                                                 single_run_results[4][start_index:, None]), axis=1),
             'hospitalized':     np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[5][start_index:, None]), axis=1),
-            'hospitalized_cum': np.concatenate((single_run_results[0][start_index:, None],
+            'hospitalizedcum':  np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[6][start_index:, None]), axis=1),
-            'icu':              np.concatenate((single_run_results[0][start_index:, None],
+            'ICU':              np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[7][start_index:, None]), axis=1),
             'icu_cum':          np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[8][start_index:, None]), axis=1),
@@ -51,7 +51,7 @@ def run_dashboard_wrapper(config_input):
                                                 single_run_results[10][start_index:, None]), axis=1),
             'infected_cum':     np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[11][start_index:, None]), axis=1),
-            'alpha_out':        np.concatenate((single_run_results[0][start_index:, None],
+            'alpha':            np.concatenate((single_run_results[0][start_index:, None],
                                                 single_run_results[12][start_index:, None]), axis=1),
         }
     else:
@@ -65,8 +65,9 @@ def run_dashboard_wrapper(config_input):
                                                   save_plots=0, save_files=0)
 
         # Update the config with the new posteriors to return
-        updated_config['N']['min'] = results['mvalues'][0][2] - (2 * results['mvalues'][0][3])
-        updated_config['N']['max'] = results['mvalues'][0][2] + (2 * results['mvalues'][0][3])
+        updated_config['N']['type'] = 'normal'
+        updated_config['N']['mean'] = results['mvalues'][0][2]
+        updated_config['N']['stddev'] = results['mvalues'][0][3]
         updated_config['R0']['mean'] = results['mvalues'][1][2]
         updated_config['R0']['stddev'] = results['mvalues'][1][3]
         updated_config['delayHOSD']['mean'] = results['mvalues'][-7][2]
@@ -79,11 +80,12 @@ def run_dashboard_wrapper(config_input):
         updated_config['hosfrac']['stddev'] = results['mvalues'][-4][3]
         updated_config['dfrac']['mean'] = results['mvalues'][-3][2]
         updated_config['dfrac']['stddev'] = results['mvalues'][-3][3]
-        # updated_config['hosd_sd']['mean'] = results['mvalues'][-2][2]  # Gaussian smooth distribution: delayHOSD
-        # updated_config['hosd_sd']['stddev'] = results['mvalues'][-2][3]  # Gaussian smooth distribution: delayHOSD
+        updated_config['delayHOSD']['smooth_sd'] = results['mvalues'][-2][2]  # Gauss. smooth dist. delayHOSD mean
+        updated_config['delayHOSD']['smooth_sd_sd'] = results['mvalues'][-2][3]  # Gauss. smooth dist. delayHOSD stddev
         updated_config['icufracscale']['mean'] = results['mvalues'][-1][2]
         updated_config['icufracscale']['stddev'] = results['mvalues'][-1][3]
 
+    # Return the result data (for both multiple or single run) as well as the updated config file
     return dashboard_data, updated_config
 
 

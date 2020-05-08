@@ -164,14 +164,13 @@ def map_model_to_obs(fwd, t_obs, output_index):
 
 def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data,
                                       calibration_mode, output_index, save_plots, save_files):
-    # Plot prior
+    # Save plots, CSV's, and return the organized data
+
+    # Initialize variables
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base_filename)
-
-    date_1 = datetime.datetime.strptime(config['startdate'], "%m/%d/%y")
-    t_obs = [date_1 + datetime.timedelta(days=a - 1) for a in t_obs]
-
     calmodes = [S_HOS, S_ICU, S_HOSCUM, S_DEAD, S_INF, S_ALPHARUN]
     o_indices = [O_HOS, O_ICU, O_HOSCUM, O_DEAD, O_CUMINF, O_ALPHARUN]
+    y_obs_s = [data[:, I_HOS], data[:, I_ICU], data[:, I_HOSCUM], data[:, I_DEAD], data[:, I_INF],[]]
     # useworldfile = config['worldfile']
     # if (useworldfile):
     #    calmodes = [ S_DEAD]
@@ -181,41 +180,43 @@ def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, 
     #    print('number of columns in data ', data.shape[1])
     #    print('number of rows in data ', data.shape[0])
     #    ncol = data.shape[1]
-
     #    data = generate_hos_actual(data, config)
 
-    titles = ['Hospitalized', 'ICU', 'Hospitalized Cum.', 'Mortalities', 'Infected', '1-$\\alpha$']
-    y_label = ['Number of cases', 'Number of cases', 'Number of cases',
-               'Number of cases', 'Number of cases', '1-$\\alpha$']
-    symcolors = [['powderblue', 'steelblue'], ['peachpuff', 'sandybrown'], ['lightgreen', 'forestgreen'],
-                 ['silver', 'grey'], ['mistyrose', 'lightcoral'], ['violet', 'purple']]
-    y_obs_s = [data[:, I_HOS], data[:, I_ICU], data[:, I_HOSCUM], data[:, I_DEAD], data[:, I_INF],[]]
-    y_maxdef = config['YMAX']
-    y_maxhos = y_maxdef * get_mean(config['hosfrac'])
-    y_maxicu = y_maxhos * get_mean(config['ICufrac'])
-    y_maxdead = y_maxhos * get_mean(config['dfrac']) * 4
-    y_maxinf = y_maxdef * 10
-    y_max = [y_maxhos, y_maxicu, y_maxhos * 4, y_maxdead, y_maxinf, 1.0]
-
-    casename = ''
-    try:
-        casename = config['plot']['casename']
-    except:
-        print('No casename in plot parameters')
-        pass
-
-    # Initialize variables
     prior = results['fw'][0]
     posterior = results['fw'][-1]
-    transparancy = min(5.0 / len(prior), 1)
+    date_1 = datetime.datetime.strptime(config['startdate'], "%m/%d/%y")
     time = fwd_args['time'] - fwd_args['time_delay']
     times = [date_1 + datetime.timedelta(days=a - 1) for a in time]
-    # Variables for saving the CSV files
     p_values = config['p_values']
     steps = np.arange(1, time.max() + 1)
     t_ind = [np.where(time == a)[0][0] for a in steps]
     h_pvalues = ['P' + str(int(100 * a)) for a in p_values]
     header = 'time,mean,' + ','.join(h_pvalues) + ',observed'
+
+    # Initialize variables for the plots
+    if save_plots:
+        t_obs = [date_1 + datetime.timedelta(days=a - 1) for a in t_obs]
+
+        titles = ['Hospitalized', 'ICU', 'Hospitalized Cum.', 'Mortalities', 'Infected', '1-$\\alpha$']
+        y_label = ['Number of cases', 'Number of cases', 'Number of cases',
+                   'Number of cases', 'Number of cases', '1-$\\alpha$']
+        symcolors = [['powderblue', 'steelblue'], ['peachpuff', 'sandybrown'], ['lightgreen', 'forestgreen'],
+                     ['silver', 'grey'], ['mistyrose', 'lightcoral'], ['violet', 'purple']]
+        transparency = min(5.0 / len(prior), 1)
+
+        y_maxdef = config['YMAX']
+        y_maxhos = y_maxdef * get_mean(config['hosfrac'])
+        y_maxicu = y_maxhos * get_mean(config['ICufrac'])
+        y_maxdead = y_maxhos * get_mean(config['dfrac']) * 4
+        y_maxinf = y_maxdef * 10
+        y_max = [y_maxhos, y_maxicu, y_maxhos * 4, y_maxdead, y_maxinf, 1.0]
+
+        casename = ''
+        try:
+            casename = config['plot']['casename']
+        except:
+            print('No casename in plot parameters')
+            pass
 
     posterior_prior_data = {}
     for i, calmode in enumerate(calmodes):
@@ -242,7 +243,7 @@ def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, 
             color = 'green'
             if np.size(y_obs) > 0:
                 plt.scatter(t_obs, y_obs, marker='o', c='k', label='Data')
-            plt.plot(times, prior_curves, alpha=transparancy, c=color)
+            plt.plot(times, prior_curves, alpha=transparency, c=color)
             plt.plot(times, prior_mean, lw=2, c=color, label='Mean of prior')
             plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
             day_interval = calc_axis_interval((times[config['XMAX']] - date_1).days)
@@ -261,7 +262,7 @@ def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, 
             color = 'blue'
             if np.size(y_obs) > 0:
                 plt.scatter(t_obs, y_obs, marker='o', c='k', label='Data')
-            plt.plot(times, posterior_curves, alpha=transparancy, c=color)
+            plt.plot(times, posterior_curves, alpha=transparency, c=color)
             plt.plot(times, post_mean, lw=2, ls=':', c=color, label='Mean of posterior')
             plt.plot(times, post_med, lw=2, c=color, label='Median of posterior')
             plt.xlim(date_1, times[config['XMAX']])
