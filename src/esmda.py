@@ -172,7 +172,7 @@ class InversionMethods:
 
                 # create m array to store results of model parameters
                 mvalues =np.zeros((nM,4))
-                mnames = np.ones(nM,dtype=np.str)
+                mnames = np.ones(nM,dtype='<U15')
                 #for i_m in range(nM):
                 #    if (i_m!=0):
                 #       mnames.append('')

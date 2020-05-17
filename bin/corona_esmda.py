@@ -332,7 +332,7 @@ def save_prior_and_posterior_alpha(results, config, steps, outpath, save_files):
     alpha0_sd = np.zeros(np.size(dayalpha))
     icount = 0
     for j, val in enumerate(mnames):
-        if val == 'a':
+        if val == 'alpha':
             alpha0[icount] = mvalues[j][0]
             alpha0_sd[icount] = mvalues[j][1]
             alpha[icount] = mvalues[j][2]

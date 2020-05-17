@@ -7,7 +7,7 @@ The method is submitted to WHO bulletin and online available (under review):
 Forecasting hospitalization and ICU rates of the COVID-19 outbreak: an efficient SEIR model
 
 Jan-Diederik van Wees, Sander Osinga, Martijn van der Kuip, Michael Tanck, Maurice Hanegraaf
-Maarten Pluymaekers, Olwijn Leeuwenburgh, Lonneke van Bijsterveldt, Jaap Zindler, Marceline Tutu van Furth
+Maarten Pluymaekers, Olwijn Leeuwenburgh, Lonneke van Bijsterveldt, Logan Brunner, Jaap Zindler, Marceline Tutu van Furth
 
 
 https://www.who.int/bulletin/online_first/COVID-19/en/

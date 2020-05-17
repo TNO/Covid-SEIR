@@ -68,24 +68,52 @@ def run_dashboard_wrapper(config_input):
         updated_config['N']['type'] = 'normal'
         updated_config['N']['mean'] = results['mvalues'][0][2]
         updated_config['N']['stddev'] = results['mvalues'][0][3]
+        updated_config['R0']['type'] = 'normal'
         updated_config['R0']['mean'] = results['mvalues'][1][2]
         updated_config['R0']['stddev'] = results['mvalues'][1][3]
-        updated_config['delayHOSD']['mean'] = results['mvalues'][-7][2]
-        updated_config['delayHOSD']['stddev'] = results['mvalues'][-7][3]
-        updated_config['delayICUD']['mean'] = results['mvalues'][-6][2]
-        updated_config['delayICUD']['stddev'] = results['mvalues'][-6][3]
-        updated_config['delayICUREC']['mean'] = results['mvalues'][-5][2]
-        updated_config['delayICUREC']['stddev'] = results['mvalues'][-5][3]
-        updated_config['hosfrac']['mean'] = results['mvalues'][-4][2]
-        updated_config['hosfrac']['stddev'] = results['mvalues'][-4][3]
-        updated_config['dfrac']['mean'] = results['mvalues'][-3][2]
-        updated_config['dfrac']['stddev'] = results['mvalues'][-3][3]
+        updated_config['alpha_normal'] = True
+        updated_config['alpha'] = [[results['mvalues'][2 + ind][2], results['mvalues'][2 + ind][3]]
+                                   for ind, x in enumerate(config['alpha'])]
+        updated_config['delayHOS']['type'] = 'normal'
+        updated_config['delayHOS']['mean'] = results['mvalues'][-10][2]
+        updated_config['delayHOS']['stddev'] = results['mvalues'][-10][3]
+        updated_config['delayHOSD']['type'] = 'normal'
+        updated_config['delayHOSD']['mean'] = results['mvalues'][-9][2]
+        updated_config['delayHOSD']['stddev'] = results['mvalues'][-9][3]
+        updated_config['delayICUD']['type'] = 'normal'
+        updated_config['delayICUD']['mean'] = results['mvalues'][-8][2]
+        updated_config['delayICUD']['stddev'] = results['mvalues'][-8][3]
+        updated_config['delayICUREC']['type'] = 'normal'
+        updated_config['delayICUREC']['mean'] = results['mvalues'][-7][2]
+        updated_config['delayICUREC']['stddev'] = results['mvalues'][-7][3]
+        updated_config['hosfrac']['type'] = 'normal'
+        updated_config['hosfrac']['mean'] = results['mvalues'][-6][2]
+        updated_config['hosfrac']['stddev'] = results['mvalues'][-6][3]
+        updated_config['dfrac']['type'] = 'normal'
+        updated_config['dfrac']['mean'] = results['mvalues'][-5][2]
+        updated_config['dfrac']['stddev'] = results['mvalues'][-5][3]
+        updated_config['icudfrac']['type'] = 'normal'
+        updated_config['icudfrac']['mean'] = results['mvalues'][-4][2]
+        updated_config['icudfrac']['stddev'] = results['mvalues'][-4][3]
+        updated_config['delayICUD']['smooth_sd'] = results['mvalues'][-3][2]  # Gauss. smooth dist. delayICUD mean
+        updated_config['delayICUD']['smooth_sd_sd'] = results['mvalues'][-3][3]  # Gauss. smooth dist. delayICUD stddev
         updated_config['delayHOSD']['smooth_sd'] = results['mvalues'][-2][2]  # Gauss. smooth dist. delayHOSD mean
         updated_config['delayHOSD']['smooth_sd_sd'] = results['mvalues'][-2][3]  # Gauss. smooth dist. delayHOSD stddev
+        updated_config['icufracscale']['type'] = 'normal'
         updated_config['icufracscale']['mean'] = results['mvalues'][-1][2]
         updated_config['icufracscale']['stddev'] = results['mvalues'][-1][3]
 
-    # Return the result data (for both multiple or single run) as well as the updated config file
+    # Return the result data (for both multiple or single run) as well as the updated config file. The dashboard_data
+    # contains the following columns for the respective variables:
+    # ~~ Full run ~~
+    #   - alpha:
+    #     - time | P5 | P25 | P50 | P75 | P95
+    #   - alpharun, dead, hospitalized, hospitalized cumulative, icu, infected:
+    #     - time | mean | P5 | P30 | P50 | P70 | P95 | observed
+    # ~~ Single run ~~
+    #   - susceptible, exposed, infected, removed, hospitalized, hospitalizedcum,
+    #     ICU, icu_cum, recovered, dead, infected_cum, alpha:
+    #     - time | value
     return dashboard_data, updated_config
 
 
