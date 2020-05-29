@@ -38,18 +38,16 @@ IP_ICUFRAC = 2
 IP_ICUDFRAC = 3
 
 
-def save_input_data(output_base_filename, time, icufrac, tmin, tmax):
+def save_input_data(filename, time, icufrac, tmin, tmax):
     i1 = int(np.where(time==tmin)[0])
     i2 = int(np.where(time==tmax)[0])
     timeclip = time[i1:i2+1]
     icufracclip = icufrac[i1:i2+1]
 
-    outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
     header = 'day icufrac'
    # table = datanew[:, 0:7]  # np.concatenate((datanew[:, 0:6]), axis=-1)
     table = np.concatenate((timeclip[:, None], icufracclip[:, None]), axis=-1)
-    np.savetxt('{}_icufrac{}.txt'.format(outpath, ''  ''),
-               table, header=header, delimiter=' ', comments='', fmt='%8f')
+    np.savetxt(filename, table, header=header, delimiter=' ', comments='', fmt='%8f')
 
 
 def save_and_plot_IC(config, output_base_filename, save_plots):
@@ -203,7 +201,16 @@ def save_and_plot_IC(config, output_base_filename, save_plots):
         icufrac = icuday/hosday
         icufrac= np.clip(icufrac,0,1)
 
-        save_input_data(output_base_filename, t, icufrac, tmin, tmax)
+        # Check if the icufrac file is defined in config, otherwise use the output_base_filename
+        try:
+            filename = os.path.split(config['icufracfile'])[-1]
+            icufrac_filename = os.path.join(os.path.split(os.getcwd())[0], 'output', filename)
+        except KeyError:
+            print("No icufracfile in config, using base filename {}_icufrac.txt".format(output_base_filename))
+            filename = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
+            icufrac_filename = '{}_icufrac.txt'.format(filename)
+
+        save_input_data(icufrac_filename, t, icufrac, tmin, tmax)
 
         if save_plots:
             fracs = [hosfrac, dfrac, icufrac, icudfrac]

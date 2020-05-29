@@ -162,8 +162,8 @@ def map_model_to_obs(fwd, t_obs, output_index):
     return retval
 
 
-def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data,
-                                      calibration_mode, output_index, save_plots, save_files):
+def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data, calibration_mode,
+                                      output_index, save_plots, save_files, plothammer=False):
     # Save plots, CSV's, and return the organized data
 
     # Initialize variables
@@ -202,7 +202,7 @@ def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, 
                    'Number of cases', 'Number of cases', '1-$\\alpha$']
         symcolors = [['powderblue', 'steelblue'], ['peachpuff', 'sandybrown'], ['lightgreen', 'forestgreen'],
                      ['silver', 'grey'], ['mistyrose', 'lightcoral'], ['violet', 'purple']]
-        transparency = min(5.0 / len(prior), 1)
+        transparency = max(min(5.0 / len(prior), 1), 0.05)
 
         y_maxdef = config['YMAX']
         y_maxhos = y_maxdef * get_mean(config['hosfrac'])
@@ -257,6 +257,36 @@ def save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, 
             plt.title(title + ' prior ensemble')
             plt.savefig('{}_prior_ensemble_{}.png'.format(outpath, calmode), dpi=300)
             plt.close()
+
+            # Plot posterior
+            isicu = (calmode == S_ICU)
+            try:
+                figure_size = config['plot']['figure_size']
+                assert len(figure_size) == 2
+                plt.figure(figsize=figure_size)
+            except:
+                pass
+            if (isicu) and plothammer:
+                try:
+                # try to read hammer
+                # consider to plot the analyse_hammer results
+                    path = '{}_hammer_diagnostics{}.csv'.format(outpath, '' '')
+                    data = np.genfromtxt(path, names=True, delimiter=',')
+                    th_trig = data['daymon']
+                    h_icurate = data['icurate']
+                    h_icu = data['icu']
+                    th_max = data['daymax']
+                    h_icupeak = data['icumax']
+                    slope_max = config['hammer_slope']
+                    th_plot = [date_1 + datetime.timedelta(days=a - 1) for a in th_trig]
+                    plt.scatter(th_plot, h_icu,  c=h_icurate, vmin=0, vmax=slope_max, marker='o', s=8)
+                    th_plot = [date_1 + datetime.timedelta(days=a - 1) for a in th_max]
+                    plt.scatter(th_plot, h_icupeak, c=h_icurate, vmin=0, vmax=slope_max, marker='o', s=8)
+                    cbar = plt.colorbar()
+                    cbar.set_label("daily ICU", labelpad=+1)
+                except:
+                    print('no hammer entries in ', path)
+                    pass
 
             # Save posterior plots
             color = 'blue'
@@ -368,114 +398,6 @@ def save_prior_and_posterior_alpha(results, config, steps, outpath, save_files):
     return table
 
 
-def apply_hammer(posterior_fw, posterior_param, fwd_args, hammer_icu, hammer_slope, hammer_alpha, time_delay, data_end):
-    # For each ensemble member, see when the hammer_ICU value is crossed (upward trend)
-    # Stop
-    hammer_time = []
-    base_day_alpha = fwd_args['locked']['dayalpha']
-    print('isample,hammertime,icu@hammer,icuslope@hammer,icumaxtime,icumax')
-
-    for p_ind, member in enumerate(posterior_fw):
-        time = member[O_TIME, :]
-        time_mask = time > data_end
-        time = member[O_TIME, time_mask]
-        icu = member[O_ICU, time_mask]
-        icu_slope = np.concatenate((np.diff(icu), [-1]))
-        icu_slope = np.roll(icu_slope, 1)
-
-        hammer = np.logical_and(icu >= hammer_icu, icu_slope > 0)
-        hammer = np.logical_or(hammer, icu_slope > hammer_slope)
-        icumax = max(icu)
-        index_icumax = (icu == icumax)
-        timeicumax = min(time[index_icumax])
-        timehammer = -1
-        try:
-            timehammer = min(time[hammer])
-        except ValueError:  # If hammer condition is never met in this realization:
-            pass
-        hammer_time.append(timehammer)
-        if timehammer != -1:
-            indexhammer = int(timehammer - time[0])
-            print(p_ind, timehammer, icu[indexhammer], icu_slope[indexhammer], timeicumax, icumax)
-    #  else:
-    #      print(p_ind, ' -1 -1 -1 ', timeicumax, icumax)
-
-    hammer_active = True
-
-    a = hammer_alpha
-    hammer_mean = 0.5 * (a[0] + a[1])
-    hammer_sd = ((1.0 / np.sqrt(12)) * (a[1] - a[0]))
-    hammer_alpha_normal = [hammer_mean, hammer_sd]
-
-    hammer_time = np.array(hammer_time)
-    alpha_offset = (fwd_args['free_param']).index('alpha')
-    new_param = []
-    new_fwd_args = []
-    for h_ind, ht in enumerate(hammer_time):
-        if hammer_active and ht > 0:
-            ht = ht + time_delay
-            day_alpha = copy.deepcopy(base_day_alpha)
-            day_alpha[day_alpha >= ht] = ht
-            # day_alpha[-1] = ht
-            param = copy.deepcopy(posterior_param[h_ind])
-            # new_alpha = np.random.uniform(*hammer_alpha)
-            new_alpha = np.random.normal(*hammer_alpha_normal)
-            change_alpha = np.where(day_alpha == ht)[0] + alpha_offset
-            param[change_alpha] = new_alpha
-            n_fwd = copy.deepcopy(fwd_args)
-            n_fwd['locked']['dayalpha'] = day_alpha
-            new_param.append(param)
-            new_fwd_args.append(n_fwd)
-        else:
-            new_param.append(posterior_param[h_ind])
-            new_fwd_args.append(copy.deepcopy(fwd_args))
-
-    # Run the updated posterior (with hammer applied) again
-    result = []
-
-    print('isample,hammertime,icu@hammer,icuslope@hammer,icumaxtime,icumax')
-    # outputstring = []
-
-    new_param = new_param
-    new_fwd_args = new_fwd_args
-    # new_param = posterior_param
-    # new_fwd_args = fwd_args
-
-    print('Running hammered posterior')
-    # for p_ind, param in enumerate(tqdm(new_param, desc='Running hammered posterior')):
-    for p_ind, param in enumerate(new_param):
-        fwd = new_fwd_args[p_ind]
-        res = base_seir_model(param, fwd)
-        time = res[O_TIME]
-        time_mask = time > data_end
-        time = res[O_TIME, time_mask]
-        icu = res[O_ICU, time_mask]
-        icu_slope = np.concatenate((np.diff(icu), [-1]))
-        icu_slope = np.roll(icu_slope, 1)
-        hammer = np.logical_and(icu >= hammer_icu, icu_slope > 0)
-        hammer = np.logical_or(hammer, icu_slope > hammer_slope)
-
-        timehammer = -1
-        try:
-            timehammer = min(time[hammer])
-        except ValueError:  # If hammer condition is never met in this realization:
-            pass
-        if timehammer != -1:
-            indexhammer = int(timehammer - time[0])
-            icu_shift = icu*1.0
-            icu_shift[0:indexhammer] = 0.0
-            icumax = max(icu_shift)
-            index_icumax = (abs(icu - icumax) < 1e-3)
-            timeicumax = min(time[index_icumax])
-            print(p_ind, timehammer, icu[indexhammer], icu_slope[indexhammer], timeicumax, icumax)
-        # else:
-        #    print(p_ind, ' -1 -1 -1 ', timeicumax , icumax)
-
-        result.append(res)
-
-    return result
-
-
 def signal_hammer(icu, icu_slope, hammer_icu, hammer_slope):
     """"
     #    check if at the current icu and icu_slope (daily icu)
@@ -490,46 +412,6 @@ def signal_hammer(icu, icu_slope, hammer_icu, hammer_slope):
     return (icu > hammer_icu and icu_slope > 0) or (icu_slope > hammer_slope)
 
 
-def get_alpha_scale_OLD(icu, icu_slope, icu_slope2, accc_low, accc_high, accc_scale=1, hammer_slope=20):
-    acc = 0.1 * hammer_slope
-    keep = 0.2 * hammer_slope
-
-    icu_dif = accc_low - icu
-    # determine number of days to overcome dif, assuming slope is pointing the right way
-    if icu_slope == 0:
-        icu_slope = 1
-    days = icu_dif / icu_slope
-    step = 0
-    if days > 0:
-        # slope in right directions, based on days to reach accc_low
-        if icu_slope / icu_slope2 > 0:
-            scalefactor = 1
-            # decide on scaling of acc and keep based on distance from target
-            # if abs(icu_dif/accc_low) < 0.1:
-            #    acc =0.25 * acc
-            #    keep = 0.25 * keep
-            # self strengthening, slow down  actively but allow low slope still to grow
-            if abs(icu_slope) < acc * scalefactor:
-                step = -np.sign(icu_slope)
-            elif abs(icu_slope) < keep * scalefactor:
-                # keep growing slope
-                step = 0
-            else:
-                # slow down growing slope
-                step = np.sign(icu_slope)
-        else:
-            # allow to grow
-            step = -np.sign(icu_slope)
-    else:
-        # growth needed as slope is going the wrong way
-        step = np.sign(icu_slope) * accc_scale
-        # if it is also accelerating the wrong way put more effort in accelerating the right way (enlarging the step)
-        if icu_slope / icu_slope2 > 0:
-            step = step * accc_scale
-
-    return step
-
-
 def get_alpha_scale(icu, icu_slope, icu_slope2, accc_low,  accc_scale=1, accc_slope=20):
     acc = 0.05 * accc_slope
     keep = 0.2 * accc_slope
@@ -539,22 +421,24 @@ def get_alpha_scale(icu, icu_slope, icu_slope2, accc_low,  accc_scale=1, accc_sl
     if icu_slope == 0:
         icu_slope = 1
     days = icu_dif / icu_slope
+    if abs(icu_slope2)<1e-20:
+        icu_slope2= 1e-20
     step = 0
     if days > 0:
         # slope in right directions, based on days to reach accc_low
         if icu_slope / icu_slope2 > 0:
 
-            # self strengthening, slow down actively but allow low slope still to grow
+            # self strengtherning, slow down  actively but allow low slope still to grow
             if abs(icu_slope) < acc:
                 if abs(icu_slope2) < 0.1 * acc:
-                    step = -np.sign(icu_slope)
+                   step = -np.sign(icu_slope)
                 else:
                     step = 0
             elif abs(icu_slope) < keep:
-                if abs(icu_slope2) < 0.1 * acc:
-                    step = 0
-                    # keep growing slope
-                else:
+               if abs(icu_slope2) < 0.1 * acc:
+                   step = 0
+                   # keep growing slope
+               else:
                     step = np.sign(icu_slope)
             else:
                 # slow down growing slope
@@ -575,16 +459,18 @@ def get_alpha_scale(icu, icu_slope, icu_slope2, accc_low,  accc_scale=1, accc_sl
     return step
 
 
-def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_timeinterval, accc_step, accc_step_sd,
-               accc_low, accc_slope, accc_scale, hammer_icu, hammer_slope, hammer_alpha, accc_cliplow, accc_cliphigh,
-               time_delay, data_end):
+def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_timeinterval, accc_timestart, accc_maxstep,
+               accc_step, accc_step_sd, accc_low, accc_slope, accc_scale, hammer_icu, hammer_slope, hammer_alpha,
+               hammer_release,accc_cliplow, accc_cliphigh,  time_delay,data_end):
     # For each ensemble member, see when the hammer_ICU value is crossed (upward trend)
     # Stop
     hammer_time = []
     base_day_alpha = fwd_args['locked']['dayalpha']
     # print('isample,hammertime,icu@hammer,icuslope@hammer,icumaxtime,icumax')
 
-    day_mon = int(data_end + time_delay)
+    #day_mon = int (data_end +time_delay)
+
+    #day_mon += (accc_timestart - data_end)
 
     alpha_offset = (fwd_args['free_param']).index('alpha')
 
@@ -593,14 +479,16 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
     table_diagnostics = []
     table_hammer_diagnostics = []
     # numberofdays forward in baseSEIR
-    ndaysforward = 50
+    ndaysforward = 800
+    ndaysforward = max(accc_timeinterval,ndaysforward)
 
     # for p_ind, member in enumerate(posterior_fw):
     for p_ind in tqdm(range(len(posterior_fw)), desc='running ACCC posterior'):
         day_alpha = copy.deepcopy(base_day_alpha)
 
         day_mon_start = int(data_end + time_delay)
-        day_mon_start_accc = max(day_mon_start, day_alpha[-1]) + 24  # 2*accc_timeinterval
+        day_mon_start += int(accc_timestart - data_end)
+        day_mon_start_accc = max(day_mon_start, day_alpha[-1])  #2*accc_timeinterval
 
         # run default forward just in case
         res = base_seir_model(posterior_param[p_ind], fwd_args)
@@ -614,17 +502,27 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
         nlookahead = 7  # 7 #accc_timeinterval
 
         day_mon = day_mon_start
-        ndayshammer = 28
-        lastday_hammer = day_mon-ndayshammer
+
+        #ndayshammer = 28
+        #lastday_hammer = day_mon-ndayshammer
+        # flag hammer has been released
+        lastday_hammer = -1
+        isteps = 0
+        alpha_scale_sum = 0
         while day_mon < time_end:
-            accc_ok = (day_mon - day_mon_start_accc) > 0
+
+            accc_ok = (day_mon - day_mon_start_accc) >= 0
             icu = res[O_ICU, :]
             icu_slope = np.concatenate((np.diff(icu), [-1]))
             icu_slope = np.roll(icu_slope, 1)
             icu_slope2 = icu_slope[day_mon + nlookahead] - icu_slope[day_mon + nlookahead-1]
 
             # check if the hammer needs to be applied
-            donothing = (day_mon - lastday_hammer) < ndayshammer
+            if lastday_hammer > 0:
+                if icu[day_mon]<hammer_release and icu_slope[day_mon] < 0:
+                    lastday_hammer = -1
+            donothing = (lastday_hammer > 0)
+            #donothing = ((day_mon- lastday_hammer) < ndayshammer )
             dohammer = signal_hammer(icu[day_mon], icu_slope[day_mon], hammer_icu, hammer_slope)
             if donothing:
                 pass
@@ -665,14 +563,19 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
                 alpha_scale_last = 0
                 # collect hammer diagnostics
                 icu = res[O_ICU, :]
-                icumax = max(icu[day_mon:day_mon+ndaysforward])
-                icumin = min(icu[day_mon:day_mon+ndaysforward])
-                row_diagnostics = np.array([p_ind, day_mon-time_delay, icu[day_mon], icu_slope[day_mon],
-                                            icumin, icumax, alphastep])
+                icuconsider = icu[day_mon:day_mon+ndaysforward]
+                icumax = max(icuconsider)
+                icumin = min(icuconsider)
+                day_max = np.where(icuconsider >= icumax)[0][0] - time_delay + day_mon
+                day_min = np.where(icuconsider <= icumin)[0][0] - time_delay + day_mon
+                row_diagnostics = np.array([p_ind, day_mon-time_delay, day_min, day_max, icu[day_mon],
+                                            icu_slope[day_mon], icumin, icumax, alphastep])
                 table_hammer_diagnostics.append(row_diagnostics)
                 lastday_hammer = day_mon
-            #  check if it is time to adapt the ACCC
-            elif accc_ok and (((day_mon-day_mon_start) % accc_timeinterval) == 0):
+                alpha_scale_sum = 0
+                #  check if it is time to adapt the ACCC
+            elif accc_ok and ((day_mon-day_mon_start) % accc_timeinterval) == 0:
+
                 model_forecast = False
                 if model_forecast:
                     icu_forecast = icu[day_mon + nlookahead]
@@ -685,12 +588,14 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
                     icu_forecast = icu[day_mon] + nlookahead * icu_slope[day_mon] + \
                                    0.5 * (nlookahead**2) * icu_slope2_forecast
 
-                alpha_scale = get_alpha_scale(icu_forecast, icu_slope_forecast, icu_slope2_forecast,
-                                              accc_low,  accc_scale, accc_slope)
+                alpha_scale = get_alpha_scale (icu_forecast, icu_slope_forecast, icu_slope2_forecast,
+                                               accc_low,  accc_scale, accc_slope)
+
+                alpha_scale_sum += alpha_scale
                 # if (alpha_scale_last==alpha_scale):
                 #    alpha_scale = 0
                 alphastep = 0
-                if alpha_scale != 0:
+                if alpha_scale != 0 and alpha_scale_sum>= - accc_maxstep:
                     # change the last active alpha active before daymon
 
                     ht = day_mon
@@ -725,15 +630,18 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
                     n_fwd['locked']['dayalpha'] = day_alpha
                     n_fwd['free_param'] = freeparamdict
 
-                    res = base_seir_model(param, n_fwd, trestart=day_mon, tend=day_mon + ndaysforward, lastresult=res)
-                    # res = base_seir_model(param, n_fwd)
+                    #res = base_seir_model(param, n_fwd, trestart= day_mon, tend= day_mon+ndaysforward, lastresult=res)
+                    res = base_seir_model(param, n_fwd, trestart=day_mon,  lastresult=res)
+                    #res = base_seir_model(param, n_fwd)
 
                 alpha_scale_last = alpha_scale
 
-                icumax = max(icu[day_mon - accc_timeinterval:day_mon + 1])
-                icumin = min(icu[day_mon - accc_timeinterval:day_mon + 1])
-                row_diagnostics = np.array([p_ind, day_mon-time_delay, icu[day_mon], icu_slope[day_mon],
-                                            icumin, icumax, alphastep])
+                icuconsider = icu[day_mon-accc_timeinterval:day_mon+1]
+                icumax = max (icuconsider)
+                icumin = min(icuconsider)
+                day_max =  np.where(icuconsider>=icumax)[0][0] - time_delay - day_mon-accc_timeinterval
+                day_min = np.where(icuconsider<= icumin)[0][0] - time_delay - day_mon-accc_timeinterval
+                row_diagnostics = np.array ([p_ind, day_mon-time_delay, day_min, day_max,icu[day_mon], icu_slope[day_mon], icumin, icumax, alphastep])
                 table_diagnostics.append(row_diagnostics)
 
             day_mon = day_mon + 1
@@ -742,7 +650,7 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
 
     # save the diagnostics file of the
     outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base_filename)
-    header = 'sampleid,daymon,icu,icurate,icumin,icumax,alphastep'
+    header = 'sampleid,daymon,daymin, daymax,icu,icurate,icumin,icumax,alphastep'
     table = np.array(table_diagnostics)
     # table =  table[:,0:5] #np.concatenate((datanew[:, 0:6]), axis=-1)
     np.savetxt('{}_accc_diagnostics{}.csv'.format(outpath, '', ''),
@@ -765,8 +673,6 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
         data = generate_zero_columns(data, config)
         # Run the forward model to obtain a prior ensemble of models
     save_input_data(base_filename, data)
-
-    nnew = find_N(config, data)
 
     calibration_modes = get_calibration_modes(config['calibration_mode'])
     observation_errors = get_calibration_errors(config['observation_error'])
@@ -791,6 +697,7 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
                     y_obs2 = data[:, i_calmodes[i]]
                     output_index2 = [o_calmodes[i]]
                     error2 = np.ones_like(y_obs2) * observation_errors[ical]
+                    error2[min(0,len(error2)-20):] *= 1
                     y_obs = np.append(y_obs, y_obs2)
                     # output_index = [output_index[0], O_ICU]
                     output_index = np.append(output_index, output_index2)
@@ -808,9 +715,16 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
     forward = base_seir_model
     np.random.seed(12345)
 
+    # Run the find_N function only if specified in the config file
+    try:
+        if config['find_N']:
+            nnew = find_N(config, data)
+            config['N'] = {'type': 'uniform', 'min': 0.25 * nnew, 'max': 4 * nnew}
+    except KeyError:
+        pass
+
     # Parse the configuration json
     ndata = np.size(data[:, 0])
-    config['N'] = {'type': 'uniform', 'min': 0.25*nnew, 'max': 4*nnew}
     m_prior, fwd_args = parse_config(config, ndata)
     m_prior = reshape_prior(m_prior)
 
@@ -842,7 +756,9 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
     # try if we want to apply ACCC
     try:
         accc_timeinterval = config['ACCC_timeinterval']
+        accc_timestart = config['ACCC_timestart']
         accc_step = config['ACCC_step']
+        accc_maxstep = config['ACCC_maxstep']
         accc_step_sd = config['ACCC_step_sd']
         accc_low = config['ACCC_low']
         accc_slope = config['ACCC_slope']
@@ -852,35 +768,19 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
         time_delay = config['time_delay']
         hammer_icu = config['hammer_ICU']
         hammer_slope = config['hammer_slope']
+        hammer_release = config['hammer_release']
         hammer_alpha = config['hammer_alpha']
         accc_results = apply_accc(base_filename, results['fw'][-1], results['M'][-1], fwd_args, accc_timeinterval,
-                                  accc_step, accc_step_sd, accc_low, accc_slope, accc_scale, hammer_icu, hammer_slope,
-                                  hammer_alpha, accc_cliplow, accc_cliphigh, time_delay, data_end=data[-1, 0])
+                                  accc_timestart, accc_maxstep, accc_step, accc_step_sd, accc_low, accc_slope,
+                                  accc_scale, hammer_icu, hammer_slope, hammer_alpha, hammer_release, accc_cliplow,
+                                  accc_cliphigh, time_delay, data_end=data[-1, 0])
         # TODO: Add hammer results to h5 file and plotting
         results['fw'][-1] = accc_results
-        save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs,
-                                          data, calibration_mode, output_index, save_plots)
+        save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data, calibration_mode,
+                                          output_index, save_plots, save_files, plothammer=True)
         add_hammer_to_results(accc_results, outpath, mode='esmda')
     except KeyError as e:
         pass  # Don't apply ACCC
-
-    # Check if we want to apply a 'hammer'
-    try:
-        hammer_icu = config['hammer_ICU']
-        hammer_slope = config['hammer_slope']
-        hammer_alpha = config['hammer_alpha']
-        nohammer = config['nohammer']
-        assert len(hammer_alpha) == 2
-        time_delay = config['time_delay']
-        hammered_results = apply_hammer(results['fw'][-1], results['M'][-1], fwd_args, hammer_icu, hammer_slope,
-                                        hammer_alpha, time_delay, data_end=data[-1, 0])
-        # TODO: Add hammer results to h5 file and plotting
-        results['fw'][-1] = hammered_results
-        save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs,
-                                          data, calibration_mode, output_index, save_plots)
-        add_hammer_to_results(hammered_results, outpath, mode='esmda')
-    except KeyError as e:
-        pass  # Don't apply hammer, you're done early!
 
     return prior_and_posterior_results, results
 

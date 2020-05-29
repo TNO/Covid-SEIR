@@ -198,8 +198,7 @@ def plot_confidence(outpath, config, inputdata, firstdate):
 
         time = modeldata['time']
         mean = modeldata['mean']
-
-        # fig, ax = plt.subplots()
+        dolabel = True        # fig, ax = plt.subplots()
         try:
             figure_size = config['plot']['figure_size']
             assert len(figure_size) == 2
@@ -208,6 +207,7 @@ def plot_confidence(outpath, config, inputdata, firstdate):
             plt.figure()
         date_1 = datetime.datetime.strptime(firstdate, "%m/%d/%y")
         t = [date_1 + datetime.timedelta(days=a - 1) for a in time]
+
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
         day_interval = calc_axis_interval((t[xmax] - t[0]).days)
         plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
@@ -239,9 +239,10 @@ def plot_confidence(outpath, config, inputdata, firstdate):
              th = data['daymon']
              hicurate = data['icurate']
              hicupeak = data['icumax']
+             slope_max = config['hammer_slope']
              try:
                 thplot = [date_1 + datetime.timedelta(days=a - 1) for a in th]
-                plt.scatter(thplot, hicupeak, c=hicurate,  marker='o', s=8)
+                plt.scatter(thplot, hicupeak, c=hicurate, vmin=0, vmax=slope_max,  marker='o', s=8)
                 if (not nolegend):
                     cbar = plt.colorbar()
                     cbar.set_label("daily ICU", labelpad=+1)
@@ -259,7 +260,9 @@ def plot_confidence(outpath, config, inputdata, firstdate):
 
         if (not nolegend):
             plt.legend(loc=legendloc)
-        plt.xlabel('Date')
+
+        if (dolabel):
+           plt.xlabel('Date')
         plt.ylabel(ylabel, fontsize=12)
         title = title + ' ' + casename
         if (not nolegend):
@@ -275,12 +278,17 @@ def plot_confidence(outpath, config, inputdata, firstdate):
 
         #plt.xlim([t[0], t[-1]])
         plt.xlim([t[0], t[xmax]])
+
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
         day_interval = calc_axis_interval((t[xmax] - t[0]).days)
         plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
         plt.gcf().autofmt_xdate()
 
-
+        if (not dolabel):
+            frame1 = plt.gca()
+            for xlabel_i in frame1.axes.get_xticklabels():
+                xlabel_i.set_visible(False)
+                xlabel_i.set_fontsize(0.0)
 
         outputpath = '{}_posterior_prob_{}_calibrated_on_{}.png'.format(outpath, calmode, config['calibration_mode'])
         plt.savefig(outputpath, dpi=300)
@@ -321,9 +329,10 @@ def plot_confidence(outpath, config, inputdata, firstdate):
             # ax.axvline(x=inow, color='silver')
             i2 = i1 + 25
             plt.xlim([t[i1], t[i2]])
-            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
-            day_interval = calc_axis_interval((t[i2] - t[i1]).days)
-            plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
+            if (dolabel):
+                plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+                day_interval = calc_axis_interval((t[i2] - t[i1]).days)
+                plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=day_interval))
             plt.ylim(np.min(modeldata[conf_level[0]][i1:i2]), np.max(modeldata[conf_level[-1]][i1:i2]))
             outputpath = '{}_posterior_prob_{}_calibrated_on_{}_zoom.png'.format(outpath, calmode, config['calibration_mode'])
             plt.savefig(outputpath, dpi=300)

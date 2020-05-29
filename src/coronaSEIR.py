@@ -3,6 +3,7 @@ from scipy.integrate import odeint
 
 from src.tools import do_hospitalization_process
 from src.tools import gauss_smooth_shift
+from src.tools import gamma_smooth_shift_convolve
 
 
 
@@ -35,7 +36,7 @@ def base_seir_model(param, dict, trestart= -999, tend=-999, lastresult=None):
             ifeltdelay = 1
             alpha_f = np.zeros_like(time)
             for j, dayr in enumerate(dayalpha):
-                alpha_f[t.tolist().index(int(dayr)+ifeltdelay):] = alpha[j]
+                alpha_f[t.tolist().index(int(dayr)+ifeltdelay):] = min(0.99,max(0.0,alpha[j]))
 
             self.alpha = alpha_f
             self.time = time
@@ -134,7 +135,7 @@ def base_seir_model(param, dict, trestart= -999, tend=-999, lastresult=None):
     #hoscum = np.roll(r, int(delay_hos)) * hosfrac
     #hoscum[:int(delay_hos)] = 0
 
-    hoscum =  gauss_smooth_shift(r, delay_hos, hos_sd, scale=hosfrac)
+    hoscum =  gamma_smooth_shift_convolve(r, delay_hos, hos_sd, scale=hosfrac)
 
     icufrac2 = icufrac
     if (not np.isscalar(icufrac)):

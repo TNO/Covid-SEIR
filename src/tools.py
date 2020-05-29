@@ -82,17 +82,75 @@ def gauss_smooth_shift_OLD(input,  shift, stddev, scale=1.0):
         # backward roll can simply use the trailing values
     return result
 
-def gaussian( x , s):
+def pdf_gaussian( x , s):
     return 1./np.sqrt( 2. * np.pi * s**2 ) * np.exp( -x**2 / ( 2. * s**2 ) )
 
 
+def pdf_lognormal (x, mu_log, sd_log):
+    if (x>0):
+        r = (1.0/(x*sd_log * np.sqrt(2*np.pi))) *  np.exp(- (np.log(x)- mu_log)**2 / (2*sd_log**2) )
+    else:
+        r= 0
+    return r
 
-
-def gamma_equivalent( x ,shape,scale ):
+def pdf_gamma( x ,shape,scale ):
     if (x<0):
         return 0
     else:
         return (x**(shape-1) *(np.exp(-x/scale)/ (sps.gamma(shape)*scale**shape)))
+
+
+
+def find_lognormal_musd (mu_target, sd_target):
+    mu = 0
+    sd = 0
+    mu_log = 0
+    sd_log = 0.7
+
+
+    while(abs(sd_target-sd)>1e-1):
+        while (abs(mu_target -mu)>1e-2 ):
+            mu = np.exp(mu_log + sd_log ** 2 / 2)
+            mu_log = mu_log + np.log(mu_target/mu)
+            sd = np.sqrt(np.exp(sd_log ** 2 + 2 * mu_log) * (np.exp(sd_log ** 2) - 1))
+            #print ('mu, sd ', mu,sd)
+        sd_log = sd_log + 0.3* np.log(sd_target /sd)
+        mu = np.exp(mu_log + sd_log ** 2 / 2)
+    return mu_log, sd_log
+
+def lognormal_smooth_shift_convolve (input,  shift, stddev, scale=1.0):
+    """
+    smooths the input with gaussian smooothing with standarddeviation and shifts its delay positions
+    :param input: The input array
+    :param shift: the amount of indices to shift the result
+    :param the stddev for the gaussian smoothing (in index count)
+    :param scale: scale the input array first with scale
+    :return: the smoothed and shifted array
+    """
+    forcescale = False
+    if isinstance(scale, np.ndarray):
+        forcescale = True
+    if (forcescale or np.abs(scale-1) > 1e-5):
+        input = input*scale
+
+    result = input
+    if (stddev > 0.99) and (shift>0.99):
+        isd = 3* max(1,int (stddev))
+        isd = min( int(0.5*np.size(input)-1), isd)
+        mu_log, sd_log = find_lognormal_musd(shift, stddev)
+        ishift = int (shift)
+        mylognormal= np.fromiter(( pdf_lognormal(x, mu_log, sd_log) for x in range (-isd+ishift, isd+ishift+1)), np.float)
+        result = np.convolve(input, mylognormal, mode='same')
+
+    if (shift > 0):
+        result = np.roll(result, int(shift))
+        result[: int(shift)] = 0
+    #else:
+        # backward roll can simply use the trailing values
+    return result
+
+
+
 
 def gamma_smooth_shift_convolve (input,  shift, stddev, scale=1.0):
     """
@@ -118,7 +176,7 @@ def gamma_smooth_shift_convolve (input,  shift, stddev, scale=1.0):
         theta = stddev**2/shift
         k = shift/theta
         ishift = int (shift)
-        mygamma= np.fromiter(( gamma_equivalent(x, k, theta) for x in range (-isd+ishift, isd+ishift+1)), np.float)
+        mygamma= np.fromiter(( pdf_gamma(x, k, theta) for x in range (-isd+ishift, isd+ishift+1)), np.float)
         result = np.convolve(input, mygamma, mode='same')
 
     if (shift > 0):
@@ -146,7 +204,7 @@ def gauss_smooth_shift_convolve(input,  shift, stddev, scale=1.0):
     result = input
     if (stddev > 0.0):
         isd = max(1,int (stddev))
-        myGaussian = np.fromiter(( gaussian(x,stddev) for x in range (-3*isd,3*isd+1)), np.float)
+        myGaussian = np.fromiter(( pdf_gaussian(x,stddev) for x in range (-3*isd,3*isd+1)), np.float)
         result = np.convolve(input, myGaussian, mode='same')
 
     result = np.roll(result, int(shift))
@@ -245,7 +303,7 @@ def do_hospitalization_process(hoscum, delays, fracs, gauss_stddev=None, removed
     icu_dead = gamma_smooth_shift_convolve(icucum, delay_icud, icud_sd, icudfrac)
 
     rechos = gauss_smooth_shift_convolve(hoscum, delay_hosrec, hosrec_sd, (1-icufrac)*(1-dpfrac))
-    hdead = gauss_smooth_shift_convolve(hoscum, delay_hosd, hosd_sd, (1-icufrac)*dpfrac)
+    hdead = gamma_smooth_shift_convolve(hoscum, delay_hosd, hosd_sd, (1-icufrac)*dpfrac)
 
     # actual icu is cumulative icu minus icu dead and icu revovered
     icu = icucum - icu_dead - icu_rechos
