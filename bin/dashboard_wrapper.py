@@ -150,47 +150,43 @@ def run_dashboard_wrapper(config_input):
         # Rearrange the output data starting from day 1
         [start_index] = np.where(results_mean[0] == 1)[0]
         # Set the results
-        dashboard_data = np.zeros((results_mean[0][start_index:, None].shape[0], 6), dtype={
-            'names': ('susceptible', 'exposed', 'infected', 'removed', 'hospitalized', 'hospitalizedcum', 'ICU',
-                      'icu_cum', 'recovered', 'dead', 'infected_cum', 'alpha'),
-            'formats': (np.float64, np.float64, np.float64, np.float64, np.float64, np.float64, np.float64, np.float64,
-                        np.float64, np.float64, np.float64, np.float64)})
-        dashboard_data['susceptible'] = np.concatenate((results_mean[0, start_index:, None],
-                                                        results_mean[1, start_index:, None],
-                                                        results_sampled[:, 1, start_index:].T), axis=1)
-        dashboard_data['exposed'] = np.concatenate((results_mean[0, start_index:, None],
-                                                    results_mean[2, start_index:, None],
-                                                    results_sampled[:, 2, start_index:].T), axis=1)
-        dashboard_data['infected'] = np.concatenate((results_mean[0, start_index:, None],
-                                                     results_mean[3, start_index:, None],
-                                                     results_sampled[:, 3, start_index:].T), axis=1)
-        dashboard_data['removed'] = np.concatenate((results_mean[0, start_index:, None],
-                                                    results_mean[4, start_index:, None],
-                                                    results_sampled[:, 4, start_index:].T), axis=1)
-        dashboard_data['hospitalized'] = np.concatenate((results_mean[0, start_index:, None],
-                                                         results_mean[5, start_index:, None],
-                                                         results_sampled[:, 5, start_index:].T), axis=1)
-        dashboard_data['hospitalizedcum'] = np.concatenate((results_mean[0, start_index:, None],
-                                                            results_mean[6, start_index:, None],
-                                                            results_sampled[:, 6, start_index:].T), axis=1)
-        dashboard_data['ICU'] = np.concatenate((results_mean[0, start_index:, None],
-                                                results_mean[7, start_index:, None],
-                                                results_sampled[:, 7, start_index:].T), axis=1)
-        dashboard_data['icu_cum'] = np.concatenate((results_mean[0, start_index:, None],
-                                                    results_mean[8, start_index:, None],
-                                                    results_sampled[:, 8, start_index:].T), axis=1)
-        dashboard_data['recovered'] = np.concatenate((results_mean[0, start_index:, None],
-                                                      results_mean[9, start_index:, None],
-                                                      results_sampled[:, 9, start_index:].T), axis=1)
-        dashboard_data['dead'] = np.concatenate((results_mean[0, start_index:, None],
-                                                 results_mean[10, start_index:, None],
-                                                 results_sampled[:, 10, start_index:].T), axis=1)
-        dashboard_data['infected_cum'] = np.concatenate((results_mean[0, start_index:, None],
-                                                         results_mean[11, start_index:, None],
-                                                         results_sampled[:, 11, start_index:].T), axis=1)
-        dashboard_data['alpha'] = np.concatenate((results_mean[0, start_index:, None],
-                                                  results_mean[12, start_index:, None],
-                                                  results_sampled[:, 12, start_index:].T), axis=1)
+        dashboard_data = {
+            'susceptible': np.concatenate((results_mean[0, start_index:, None],
+                                           results_mean[1, start_index:, None],
+                                           results_sampled[:, 1, start_index:].T), axis=1),
+            'exposed': np.concatenate((results_mean[0, start_index:, None],
+                                       results_mean[2, start_index:, None],
+                                       results_sampled[:, 2, start_index:].T), axis=1),
+            'infected': np.concatenate((results_mean[0, start_index:, None],
+                                        results_mean[3, start_index:, None],
+                                        results_sampled[:, 3, start_index:].T), axis=1),
+            'removed': np.concatenate((results_mean[0, start_index:, None],
+                                       results_mean[4, start_index:, None],
+                                       results_sampled[:, 4, start_index:].T), axis=1),
+            'hospitalized': np.concatenate((results_mean[0, start_index:, None],
+                                            results_mean[5, start_index:, None],
+                                            results_sampled[:, 5, start_index:].T), axis=1),
+            'hospitalizedcum': np.concatenate((results_mean[0, start_index:, None],
+                                               results_mean[6, start_index:, None],
+                                               results_sampled[:, 6, start_index:].T), axis=1),
+            'ICU': np.concatenate((results_mean[0, start_index:, None],
+                                   results_mean[7, start_index:, None],
+                                   results_sampled[:, 7, start_index:].T), axis=1),
+            'icu_cum': np.concatenate((results_mean[0, start_index:, None],
+                                       results_mean[8, start_index:, None],
+                                       results_sampled[:, 8, start_index:].T), axis=1),
+            'recovered': np.concatenate((results_mean[0, start_index:, None],
+                                         results_mean[9, start_index:, None],
+                                         results_sampled[:, 9, start_index:].T), axis=1),
+            'dead': np.concatenate((results_mean[0, start_index:, None],
+                                    results_mean[10, start_index:, None],
+                                    results_sampled[:, 10, start_index:].T), axis=1),
+            'infected_cum': np.concatenate((results_mean[0, start_index:, None],
+                                            results_mean[11, start_index:, None],
+                                            results_sampled[:, 11, start_index:].T), axis=1),
+            'alpha': np.concatenate((results_mean[0, start_index:, None],
+                                     results_mean[12, start_index:, None],
+                                     results_sampled[:, 12, start_index:].T), axis=1)}
     else:
         # Make the input data and IC files
         get_and_save_nl_data(config['startdate'], config['country'], config['icdatafile'])
