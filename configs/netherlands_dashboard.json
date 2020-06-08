@@ -9,6 +9,7 @@
   "nr_prior_samples": 50,
   "nr_forecast_samples": 1500,
   "esmda_iterations": 16,
+  "find_N": true,
   "N" : {
     "type": "uniform",
     "min": 25000,
@@ -83,7 +84,7 @@
   },
   "icdatafile": "../res/icdata_main.txt",
   "ICufrac": 0.35,
-  "icufracfile":  "../output/netherlands_dashboard_icufrac.txt",
+  "icufracfile":  "../bin/output/netherlands_dashboard_icufrac.txt",
   "icufracscale": {
     "type": "normal",
     "mean": 1,

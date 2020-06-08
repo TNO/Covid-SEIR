@@ -203,12 +203,25 @@ def save_and_plot_IC(config, output_base_filename, save_plots):
 
         # Check if the icufrac file is defined in config, otherwise use the output_base_filename
         try:
-            filename = os.path.split(config['icufracfile'])[-1]
-            icufrac_filename = os.path.join(os.path.split(os.getcwd())[0], 'output', filename)
+            if config['output_base_filename'] == 'netherlands_dashboard':
+                try:
+                    icufrac_filename = config['icufracfile']
+                except KeyError:
+                    print("No icufracfile in config, using base filename {}_icufrac.txt".format(output_base_filename))
+                    filename = os.path.join(os.path.split(os.getcwd())[0], 'bin', 'output', output_base_filename)
+                    icufrac_filename = '{}_icufrac.txt'.format(filename)
+                from pathlib import Path
+                Path(os.path.split(icufrac_filename)[0]).mkdir(parents=True, exist_ok=True)
+            else:
+                raise KeyError
         except KeyError:
-            print("No icufracfile in config, using base filename {}_icufrac.txt".format(output_base_filename))
-            filename = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
-            icufrac_filename = '{}_icufrac.txt'.format(filename)
+            try:
+                filename = os.path.split(config['icufracfile'])[-1]
+                icufrac_filename = os.path.join(os.path.split(os.getcwd())[0], 'output', filename)
+            except KeyError:
+                print("No icufracfile in config, using base filename {}_icufrac.txt".format(output_base_filename))
+                filename = os.path.join(os.path.split(os.getcwd())[0], 'output', output_base_filename)
+                icufrac_filename = '{}_icufrac.txt'.format(filename)
 
         save_input_data(icufrac_filename, t, icufrac, tmin, tmax)
 
