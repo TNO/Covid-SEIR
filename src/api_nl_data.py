@@ -28,16 +28,23 @@ def scrape_nl_data():
     driver.get('https://www.rivm.nl/coronavirus-covid-19/grafieken')
 
     try:
+        # Wait for the 27 Feb. link to be present
         WebDriverWait(driver, 10).until(EC.visibility_of_element_located((
-            By.XPATH, '//*[name()="g" and @class="highcharts-series-group"]')))
+            By.XPATH, '//*[name()="a" and @id="par-tab-462441"]')))
+        # WebDriverWait(driver, 10).until(EC.visibility_of_element_located((
+        #     By.XPATH, '//*[name()="g" and @class="highcharts-series-group"]')))
     except TimeoutException:
         print('Timed out waiting for page to load')
         driver.quit()
         sys.exit(1)
 
+    # With updated RIVM page, have to click on the tab that shows the full table of data
+    feb_27_button = driver.find_elements_by_xpath('//*[name()="a" and @id="par-tab-462441"]')[0]
+    feb_27_button.click()
+
     # Get the charts from RIVM
-    [infected_chart, hospitalized_chart, dead_chart, dead_age_gender] = driver.find_elements_by_xpath(
-        '//*[name()="g" and @class="highcharts-series-group"]')
+    [may_4_infected_chart, infected_chart, hospitalized_chart, dead_chart, dead_age_gender] = \
+        driver.find_elements_by_xpath('//*[name()="g" and @class="highcharts-series-group"]')
 
     # Infected data from RIVM
     infected_new_html = infected_chart.find_elements_by_xpath(

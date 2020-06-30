@@ -55,6 +55,32 @@ def single_run_mean(config, data):
     m_prior = reshape_prior(m_prior)
     param = m_prior[0]
     res = base_seir_model(param, fwd_args)
+
+    try:
+        posterior_param = [param]
+        accc_timeinterval = config['ACCC_timeinterval']
+        accc_timestart = config['ACCC_timestart']
+        accc_step = config['ACCC_step']
+        accc_maxstep = config['ACCC_maxstep']
+        accc_step_sd = config['ACCC_step_sd']
+        accc_low = config['ACCC_low']
+        accc_slope = config['ACCC_slope']
+        accc_scale = config['ACCC_scale']
+        accc_cliplow = config['ACCC_cliplow']
+        accc_cliphigh = config['ACCC_cliphigh']
+        time_delay = config['time_delay']
+        hammer_icu = config['hammer_ICU']
+        hammer_slope = config['hammer_slope']
+        hammer_release = config['hammer_release']
+        hammer_alpha = config['hammer_alpha']
+        accc_results = apply_accc(config['output_base_filename'], posterior_param, fwd_args, accc_timeinterval,
+                                  accc_timestart, accc_maxstep, accc_step, accc_step_sd, accc_low, accc_slope,
+                                  accc_scale, hammer_icu, hammer_slope, hammer_alpha, hammer_release, accc_cliplow,
+                                  accc_cliphigh, time_delay, data_end=data[-1, 0])
+        res = accc_results[0]
+    except KeyError:
+        pass
+
     return res
 
 
@@ -459,7 +485,7 @@ def get_alpha_scale(icu, icu_slope, icu_slope2, accc_low,  accc_scale=1, accc_sl
     return step
 
 
-def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_timeinterval, accc_timestart, accc_maxstep,
+def apply_accc(base_filename, posterior_param, fwd_args, accc_timeinterval, accc_timestart, accc_maxstep,
                accc_step, accc_step_sd, accc_low, accc_slope, accc_scale, hammer_icu, hammer_slope, hammer_alpha,
                hammer_release,accc_cliplow, accc_cliphigh,  time_delay,data_end):
     # For each ensemble member, see when the hammer_ICU value is crossed (upward trend)
@@ -482,8 +508,8 @@ def apply_accc(base_filename, posterior_fw, posterior_param, fwd_args, accc_time
     ndaysforward = 800
     ndaysforward = max(accc_timeinterval,ndaysforward)
 
-    # for p_ind, member in enumerate(posterior_fw):
-    for p_ind in tqdm(range(len(posterior_fw)), desc='running ACCC posterior'):
+    # for p_ind, member in enumerate(posterior_param):
+    for p_ind in tqdm(range(len(posterior_param)), desc='running ACCC posterior'):
         day_alpha = copy.deepcopy(base_day_alpha)
 
         day_mon_start = int(data_end + time_delay)
@@ -753,34 +779,34 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
         outpath = os.path.join(os.path.split(os.getcwd())[0], 'output', base_filename + '_output.h5')
         save_results(results, fwd_args, config, outpath, data, mode='esmda')
 
-    # try if we want to apply ACCC
-    try:
-        accc_timeinterval = config['ACCC_timeinterval']
-        accc_timestart = config['ACCC_timestart']
-        accc_step = config['ACCC_step']
-        accc_maxstep = config['ACCC_maxstep']
-        accc_step_sd = config['ACCC_step_sd']
-        accc_low = config['ACCC_low']
-        accc_slope = config['ACCC_slope']
-        accc_scale = config['ACCC_scale']
-        accc_cliplow = config['ACCC_cliplow']
-        accc_cliphigh = config['ACCC_cliphigh']
-        time_delay = config['time_delay']
-        hammer_icu = config['hammer_ICU']
-        hammer_slope = config['hammer_slope']
-        hammer_release = config['hammer_release']
-        hammer_alpha = config['hammer_alpha']
-        accc_results = apply_accc(base_filename, results['fw'][-1], results['M'][-1], fwd_args, accc_timeinterval,
-                                  accc_timestart, accc_maxstep, accc_step, accc_step_sd, accc_low, accc_slope,
-                                  accc_scale, hammer_icu, hammer_slope, hammer_alpha, hammer_release, accc_cliplow,
-                                  accc_cliphigh, time_delay, data_end=data[-1, 0])
-        # TODO: Add hammer results to h5 file and plotting
-        results['fw'][-1] = accc_results
-        save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data, calibration_mode,
-                                          output_index, save_plots, save_files, plothammer=True)
-        add_hammer_to_results(accc_results, outpath, mode='esmda')
-    except KeyError as e:
-        pass  # Don't apply ACCC
+        # try if we want to apply ACCC
+        try:
+            accc_timeinterval = config['ACCC_timeinterval']
+            accc_timestart = config['ACCC_timestart']
+            accc_step = config['ACCC_step']
+            accc_maxstep = config['ACCC_maxstep']
+            accc_step_sd = config['ACCC_step_sd']
+            accc_low = config['ACCC_low']
+            accc_slope = config['ACCC_slope']
+            accc_scale = config['ACCC_scale']
+            accc_cliplow = config['ACCC_cliplow']
+            accc_cliphigh = config['ACCC_cliphigh']
+            time_delay = config['time_delay']
+            hammer_icu = config['hammer_ICU']
+            hammer_slope = config['hammer_slope']
+            hammer_release = config['hammer_release']
+            hammer_alpha = config['hammer_alpha']
+            accc_results = apply_accc(base_filename, results['M'][-1], fwd_args, accc_timeinterval,
+                                      accc_timestart, accc_maxstep, accc_step, accc_step_sd, accc_low, accc_slope,
+                                      accc_scale, hammer_icu, hammer_slope, hammer_alpha, hammer_release, accc_cliplow,
+                                      accc_cliphigh, time_delay, data_end=data[-1, 0])
+            # TODO: Add hammer results to h5 file and plotting
+            results['fw'][-1] = accc_results
+            save_and_plot_prior_and_posterior(results, fwd_args, config, base_filename, t_obs, data, calibration_mode,
+                                              output_index, save_plots, save_files, plothammer=True)
+            add_hammer_to_results(accc_results, outpath, mode='esmda')
+        except KeyError:
+            pass  # Don't apply ACCC
 
     return prior_and_posterior_results, results
 

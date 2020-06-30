@@ -8,7 +8,7 @@
   "population": 17e6,
   "nr_prior_samples": 50,
   "nr_forecast_samples": 1500,
-  "esmda_iterations": 16,
+  "esmda_iterations": 8,
   "find_N": true,
   "N" : {
     "type": "uniform",
@@ -95,5 +95,19 @@
   "hist_time_steps": [30, 35, 40, 60],
   "p_values": [0.05, 0.3, 0.5, 0.7, 0.95],
   "single_run": false,
-  "output_base_filename": "netherlands_dashboard"
+  "output_base_filename": "netherlands_dashboard",
+  "ACCC_timeinterval": 1400,
+  "ACCC_timestart": 100,
+  "ACCC_step": 0.04,
+  "ACCC_maxstep": 0,
+  "ACCC_step_sd": 0.01,
+  "ACCC_low": 200,
+  "ACCC_slope": 20,
+  "ACCC_cliplow": 0.01,
+  "ACCC_cliphigh": 0.99,
+  "ACCC_scale": 1,
+  "hammer_ICU": 700,
+  "hammer_slope": 20,
+  "hammer_release": 500,
+  "hammer_alpha": [0.75, 0.85]
 }
