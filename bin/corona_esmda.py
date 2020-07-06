@@ -710,7 +710,11 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
             print('ensemble fit on : ', calibration_modes[0], ' with error ', observation_errors[0])
             y_obs = data[:, i_calmodes[i]]
             output_index = [o_calmodes[i]]
-            error = np.ones_like(y_obs) * observation_errors[0]
+            if calmode == S_HOS or calmode == S_ICU:
+                error = y_obs * (observation_errors[0] / 100)
+                error[error <= 0] = 1
+            else:
+                error = np.ones_like(y_obs) * observation_errors[0]
             found = True
     if not found:
         raise NotImplementedError
@@ -722,8 +726,11 @@ def run_esmda_model(base_filename, config, data, save_plots=1, save_files=1):
                 if calmode == calibration_mode:
                     y_obs2 = data[:, i_calmodes[i]]
                     output_index2 = [o_calmodes[i]]
-                    error2 = np.ones_like(y_obs2) * observation_errors[ical]
-                    error2[min(0,len(error2)-20):] *= 1
+                    if calmode == S_HOS or calmode == S_ICU:
+                        error2 = y_obs2 * (observation_errors[ical] / 100)
+                        error2[error2 <= 0] = 1
+                    else:
+                        error2 = np.ones_like(y_obs2) * observation_errors[ical]
                     y_obs = np.append(y_obs, y_obs2)
                     # output_index = [output_index[0], O_ICU]
                     output_index = np.append(output_index, output_index2)

@@ -266,62 +266,62 @@ def run_dashboard_wrapper(config_input):
     updated_config = config
     if config['single_run']:
         # Run the single run model
-        try:
-            num_single_runs = config['num_single_runs'] - 1
-        except KeyError:
-            num_single_runs = 4
+        # try:
+        #     num_single_runs = config['num_single_runs'] - 1
+        # except KeyError:
+        #     num_single_runs = 4
 
         # Run the single run with the mean provided
         results_mean = single_run_mean(config, data)
 
-        # Run the single run for the remaining times with values sampled from the config distributions
-        results_sampled = np.zeros((num_single_runs, results_mean.shape[0], results_mean.shape[1]))
-        # Get a list of configs with the mean changed to be a sampled value of the original config mean and standard
-        # deviation.
-        sampled_configs = sample_config_distributions(config, num_single_runs)
-        for i in range(0, num_single_runs):
-            results_sampled[i] = single_run_mean(sampled_configs[i], data)
+        # # Run the single run for the remaining times with values sampled from the config distributions
+        # results_sampled = np.zeros((num_single_runs, results_mean.shape[0], results_mean.shape[1]))
+        # # Get a list of configs with the mean changed to be a sampled value of the original config mean and standard
+        # # deviation.
+        # sampled_configs = sample_config_distributions(config, num_single_runs)
+        # for i in range(0, num_single_runs):
+        #     results_sampled[i] = single_run_mean(sampled_configs[i], data)
 
         # Rearrange the output data starting from day 1
         [start_index] = np.where(results_mean[0] == 1)[0]
         # Set the results
         dashboard_data = {
             'susceptible': np.concatenate((results_mean[0, start_index:, None],
-                                           results_mean[1, start_index:, None],
-                                           results_sampled[:, 1, start_index:].T), axis=1),
+                                           results_mean[1, start_index:, None]), axis=1),
+                                           # results_sampled[:, 1, start_index:].T), axis=1),
             'exposed': np.concatenate((results_mean[0, start_index:, None],
-                                       results_mean[2, start_index:, None],
-                                       results_sampled[:, 2, start_index:].T), axis=1),
+                                       results_mean[2, start_index:, None]), axis=1),
+                                       # results_sampled[:, 2, start_index:].T), axis=1),
             'infected': np.concatenate((results_mean[0, start_index:, None],
-                                        results_mean[3, start_index:, None],
-                                        results_sampled[:, 3, start_index:].T), axis=1),
+                                        results_mean[3, start_index:, None]), axis=1),
+                                        # results_sampled[:, 3, start_index:].T), axis=1),
             'removed': np.concatenate((results_mean[0, start_index:, None],
-                                       results_mean[4, start_index:, None],
-                                       results_sampled[:, 4, start_index:].T), axis=1),
+                                       results_mean[4, start_index:, None]), axis=1),
+                                       # results_sampled[:, 4, start_index:].T), axis=1),
             'hospitalized': np.concatenate((results_mean[0, start_index:, None],
-                                            results_mean[5, start_index:, None],
-                                            results_sampled[:, 5, start_index:].T), axis=1),
+                                            results_mean[5, start_index:, None]), axis=1),
+                                            # results_sampled[:, 5, start_index:].T), axis=1),
             'hospitalizedcum': np.concatenate((results_mean[0, start_index:, None],
-                                               results_mean[6, start_index:, None],
-                                               results_sampled[:, 6, start_index:].T), axis=1),
+                                               results_mean[6, start_index:, None]), axis=1),
+                                               # results_sampled[:, 6, start_index:].T), axis=1),
             'ICU': np.concatenate((results_mean[0, start_index:, None],
-                                   results_mean[7, start_index:, None],
-                                   results_sampled[:, 7, start_index:].T), axis=1),
+                                   results_mean[7, start_index:, None]), axis=1),
+                                   # results_sampled[:, 7, start_index:].T), axis=1),
             'icu_cum': np.concatenate((results_mean[0, start_index:, None],
-                                       results_mean[8, start_index:, None],
-                                       results_sampled[:, 8, start_index:].T), axis=1),
+                                       results_mean[8, start_index:, None]), axis=1),
+                                       # results_sampled[:, 8, start_index:].T), axis=1),
             'recovered': np.concatenate((results_mean[0, start_index:, None],
-                                         results_mean[9, start_index:, None],
-                                         results_sampled[:, 9, start_index:].T), axis=1),
+                                         results_mean[9, start_index:, None]), axis=1),
+                                         # results_sampled[:, 9, start_index:].T), axis=1),
             'dead': np.concatenate((results_mean[0, start_index:, None],
-                                    results_mean[10, start_index:, None],
-                                    results_sampled[:, 10, start_index:].T), axis=1),
+                                    results_mean[10, start_index:, None]), axis=1),
+                                    # results_sampled[:, 10, start_index:].T), axis=1),
             'infected_cum': np.concatenate((results_mean[0, start_index:, None],
-                                            results_mean[11, start_index:, None],
-                                            results_sampled[:, 11, start_index:].T), axis=1),
+                                            results_mean[11, start_index:, None]), axis=1),
+                                            # results_sampled[:, 11, start_index:].T), axis=1),
             'alpha': np.concatenate((results_mean[0, start_index:, None],
-                                     results_mean[12, start_index:, None],
-                                     results_sampled[:, 12, start_index:].T), axis=1)}
+                                     results_mean[12, start_index:, None]), axis=1)}
+                                     # results_sampled[:, 12, start_index:].T), axis=1)}
     else:
         # Make the input data and IC files
         get_and_save_nl_data(config['startdate'], config['country'], config['icdatafile'])
